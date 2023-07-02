@@ -66,16 +66,4 @@ class CivilServiceJobsScraper::ResultPage
 
     status_display.result_page(current_page, "expanded skipped: #{skipped} enqueued: #{enqueued} fetched: #{fetched} complete: #{complete}")
   end
-
-  def enqueue_next_page_fetcher!(agent, worker_pool, results_store, &callback)
-    if next_page?
-      worker_pool.enqueue do |thread_num| 
-        r = CivilServiceJobsScraper::ResultPage.new(agent.get(next_page_url))
-        callback.call(r)
-        r.expand!(agent,worker_pool, results_store)
-      end
-    else
-      worker_pool.reached_last_page!
-    end
-  end
 end
