@@ -2,7 +2,7 @@ require 'mechanize'
 
 RSpec.describe CivilServiceJobsScraper::Page::JobTeaser do
 	let(:agent) { Mechanize.new }
-	let(:spec_path) { Pathname.new(File.dirname(__FILE__)) + "../../fixtures" }
+	let(:spec_path) { Pathname.new(File.dirname(__FILE__)) + "../../../fixtures" }
 	let(:fixture_file_uri) { "file://" + (spec_path + "result_page1.html").to_s }
 	let(:page) { agent.get(fixture_file_uri) }
 	let(:status_display) { instance_double(CivilServiceJobsScraper::StatusDisplay) }
