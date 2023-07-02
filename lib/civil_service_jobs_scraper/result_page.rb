@@ -36,9 +36,6 @@ class CivilServiceJobsScraper::ResultPage
       .map { |li| JobTeaser.new(li) }
   end
 
-  def fetch(url, agent, worker_pool, results_store, &callback)
-  end
-
   def enqueue_job_detail_fetchers!(agent, worker_pool, results_store)
     status_display.result_page(current_page, "expanding")
     skipped = enqueued = fetched = complete = 0
