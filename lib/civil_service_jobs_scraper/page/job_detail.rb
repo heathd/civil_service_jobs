@@ -10,6 +10,11 @@ class CivilServiceJobsScraper::Page::JobDetail
     db_friendly_names(side_panel_fields_kv)
   end
 
+  def body
+    page.css('.vac_display_panel_main').inner_html
+  end
+
+private
   def db_friendly_names(kv)
     Hash[kv.map {|n,v| [db_friendly_name(n), v]}]
   end
@@ -34,9 +39,5 @@ class CivilServiceJobsScraper::Page::JobDetail
         memo + distinct_names.zip(values)
       end
     end
-  end
-
-  def body
-    page.css('.vac_display_panel_main').inner_html
   end
 end
