@@ -10,7 +10,7 @@ class CivilServiceJobsScraper::ResultPage
   def pagination
     @pagination ||= begin
       list_elems = page.css('div.search-results-panel-main-inner .search-results-pageform .search-results-paging-menu ul li')
-      Pagination.new(list_elems)
+      CivilServiceJobsScraper::Pagination.new(list_elems)
     end
   end
 
@@ -33,7 +33,7 @@ class CivilServiceJobsScraper::ResultPage
   def job_list
     page
       .css('div.search-results-panel-main-inner ul[title="Job list"] li')
-      .map { |li| JobTeaser.new(li) }
+      .map { |li| CivilServiceJobsScraper::JobTeaser.new(li) }
   end
 
   def enqueue_job_detail_fetchers!(agent, worker_pool, results_store)
@@ -55,7 +55,7 @@ class CivilServiceJobsScraper::ResultPage
         status_display.increment(:page_detail_fetch)
         fetched += 1 
 
-        job_page = JobPage.new(agent.get(job_teaser.job_page_url))
+        job_page = CivilServiceJobsScraper::JobPage.new(agent.get(job_teaser.job_page_url))
         results_store.add(job_teaser, job_page)
 
         status_display.thread_status(thread_num, "DONE  #{job_teaser.refcode}")
@@ -70,7 +70,7 @@ class CivilServiceJobsScraper::ResultPage
   def enqueue_next_page_fetcher!(agent, worker_pool, results_store, &callback)
     if next_page?
       worker_pool.enqueue do |thread_num| 
-        r = ResultPage.new(agent.get(next_page_url))
+        r = CivilServiceJobsScraper::ResultPage.new(agent.get(next_page_url))
         callback.call(r)
         r.expand!(agent,worker_pool, results_store)
       end

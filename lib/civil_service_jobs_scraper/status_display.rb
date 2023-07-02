@@ -58,7 +58,7 @@ class CivilServiceJobsScraper::StatusDisplay
 
   def result_page(page_number, status)
     @mutex.synchronize do
-      print TTY::Cursor.row(num_threads + 3 +page_number)
+      print TTY::Cursor.row(num_threads + 3 + page_number)
       print TTY::Cursor.column(0)
       print "#{page_number}: #{status}"
     end
