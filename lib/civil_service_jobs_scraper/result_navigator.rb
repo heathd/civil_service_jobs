@@ -19,7 +19,7 @@ class CivilServiceJobsScraper::ResultNavigator
       @page_status_map.fetching!(page_number)
 
       worker_pool.enqueue do |thread_num| 
-        r = CivilServiceJobsScraper::ResultPage.new(agent.get(url))
+        r = CivilServiceJobsScraper::Page::ResultPage.new(agent.get(url))
         mark_complete_and_traverse_from(r)
       end
     end
@@ -44,7 +44,7 @@ class CivilServiceJobsScraper::ResultNavigator
         status_display.increment(:page_detail_fetch)
         fetched += 1 
 
-        job_page = CivilServiceJobsScraper::JobPage.new(agent.get(job_teaser.job_page_url))
+        job_page = CivilServiceJobsScraper::Page::JobDetail.new(agent.get(job_teaser.job_page_url))
         results_store.add(job_teaser, job_page)
 
         status_display.thread_status(thread_num, "DONE  #{job_teaser.refcode}")

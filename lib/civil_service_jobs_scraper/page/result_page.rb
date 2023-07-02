@@ -1,5 +1,5 @@
 
-class CivilServiceJobsScraper::ResultPage
+class CivilServiceJobsScraper::Page::ResultPage
   attr_reader :page, :status_display
 
   def initialize(page, status_display:)
@@ -33,6 +33,6 @@ class CivilServiceJobsScraper::ResultPage
   def job_list
     page
       .css('div.search-results-panel-main-inner ul[title="Job list"] li')
-      .map { |li| CivilServiceJobsScraper::JobTeaser.new(li) }
+      .map { |li| CivilServiceJobsScraper::Page::JobTeaser.new(li) }
   end
 end

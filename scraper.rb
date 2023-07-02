@@ -19,7 +19,7 @@ worker_pool.spawn_threads
 
 # First page
 # start_page = agent.get("https://www.civilservicejobs.service.gov.uk/csr/index.cgi")
-# r = CivilServiceJobsScraper::ResultPage.new(start_page.form_with(id: "ID_context_search_form").submit)
+# r = CivilServiceJobsScraper::Page::ResultPage.new(start_page.form_with(id: "ID_context_search_form").submit)
 r=nil
 
 n = CivilServiceJobsScraper::ResultNavigator.new(agent: agent, worker_pool: worker_pool, results_store: results_store, status_display: STATUS)

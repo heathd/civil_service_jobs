@@ -1,12 +1,12 @@
 require 'mechanize'
 
-RSpec.describe CivilServiceJobsScraper::JobTeaser do
+RSpec.describe CivilServiceJobsScraper::Page::JobTeaser do
 	let(:agent) { Mechanize.new }
 	let(:spec_path) { Pathname.new(File.dirname(__FILE__)) + "../../fixtures" }
 	let(:fixture_file_uri) { "file://" + (spec_path + "result_page1.html").to_s }
 	let(:page) { agent.get(fixture_file_uri) }
 	let(:status_display) { instance_double(CivilServiceJobsScraper::StatusDisplay) }
-	let(:result_page) { CivilServiceJobsScraper::ResultPage.new(page, status_display: status_display) }
+	let(:result_page) { CivilServiceJobsScraper::Page::ResultPage.new(page, status_display: status_display) }
 	subject(:job_teaser) { result_page.job_list.first }
 
 	it "has a refcode" do

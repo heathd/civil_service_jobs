@@ -1,5 +1,5 @@
 
-class CivilServiceJobsScraper::JobPage
+class CivilServiceJobsScraper::Page::JobDetail
   attr_reader :page
 
   def initialize(page)

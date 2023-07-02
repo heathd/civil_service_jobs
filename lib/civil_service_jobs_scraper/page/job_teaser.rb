@@ -1,5 +1,5 @@
 
-class CivilServiceJobsScraper::JobTeaser
+class CivilServiceJobsScraper::Page::JobTeaser
   attr_reader :li
 
   def initialize(li)
