@@ -1,10 +1,9 @@
 
 class CivilServiceJobsScraper::Page::ResultPage
-  attr_reader :page, :status_display
+  attr_reader :page
 
-  def initialize(page, status_display:)
+  def initialize(page)
     @page = page
-    @status_display = status_display
   end
 
   def pagination_links

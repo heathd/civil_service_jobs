@@ -10,11 +10,7 @@ class CivilServiceJobsScraper::Worker
     @status_display = status_display
   end
   
-  def reached_last_page!
-    @has_reached_last_page=true
-  end
-
-  def spawn_threads
+  def start!
     num_threads.times do |thread_num|
       threads << Thread.new do
         while running? || actions?
@@ -23,6 +19,7 @@ class CivilServiceJobsScraper::Worker
         end
       end
     end
+    self
   end
 
   def enqueue(&action)

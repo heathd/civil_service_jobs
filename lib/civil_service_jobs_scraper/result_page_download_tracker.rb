@@ -1,5 +1,5 @@
 
-class CivilServiceJobsScraper::PageStatusMap
+class CivilServiceJobsScraper::ResultPageDownloadTracker
   attr_reader :page_status_map, :last_page, :status_display
 
   def initialize(status_display:)
@@ -24,9 +24,9 @@ class CivilServiceJobsScraper::PageStatusMap
     end
   end
 
-  def complete!(result_page)
+  def downloaded!(result_page)
     page_number = result_page.current_page
-    status_display.result_page(page_number, "complete")
+    status_display.result_page(page_number, "downloaded")
 
     @page_status_mutex.synchronize do
 
@@ -34,18 +34,18 @@ class CivilServiceJobsScraper::PageStatusMap
         @last_page = result_page.last_page
       end
 
-      @page_status_map[page_number] = :complete
+      @page_status_map[page_number] = :downloaded
       @page_map[page_number] = result_page
     end
   end
 
-  def all_complete?
+  def all_downloaded?
     @page_status_mutex.synchronize do
       if @last_page.nil?
         false
       else
         @page_status_map.keys.sort == (1..@last_page).to_a &&
-          @page_status_map.all? {|k,v| v == :complete}
+          @page_status_map.all? {|k,v| v == :downloaded}
       end
     end
   end
