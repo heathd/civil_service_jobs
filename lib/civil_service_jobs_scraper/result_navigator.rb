@@ -11,7 +11,7 @@ class CivilServiceJobsScraper::ResultNavigator
 
   def mark_complete_and_traverse_from(result_page)
     @page_status_map.complete!(result_page)
-    result_page.enqueue_job_detail_fetchers!(agent, worker_pool, results_store)
+    result_page.enqueue_job_detail_fetchers!(result_page)
 
     pages = result_page.pagination.pages
     pages.each do |page_number, url|
@@ -23,6 +23,37 @@ class CivilServiceJobsScraper::ResultNavigator
         mark_complete_and_traverse_from(r)
       end
     end
+  end
+
+  def enqueue_job_detail_fetchers!(result_page)
+    status_display.result_page(result_page.current_page, "expanding")
+    skipped = enqueued = fetched = complete = 0
+
+    result_page.job_list.each do |job_teaser|
+      if results_store.exists?(job_teaser)
+        status_display.increment(:page_detail_skip)
+        skipped += 1 
+        next
+      end
+
+      status_display.increment(:page_detail_enqueue)
+      enqueued += 1 
+
+      worker_pool.enqueue { |thread_num|
+        status_display.thread_status(thread_num, "Fetch #{job_teaser.refcode}")
+        status_display.increment(:page_detail_fetch)
+        fetched += 1 
+
+        job_page = CivilServiceJobsScraper::JobPage.new(agent.get(job_teaser.job_page_url))
+        results_store.add(job_teaser, job_page)
+
+        status_display.thread_status(thread_num, "DONE  #{job_teaser.refcode}")
+        status_display.increment(:page_detail_complete)
+        complete += 1 
+      }
+    end
+
+    status_display.result_page(result_page.current_page, "expanded skipped: #{skipped} enqueued: #{enqueued} fetched: #{fetched} complete: #{complete}")
   end
 
   def wait_for_completion
