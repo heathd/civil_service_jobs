@@ -6,6 +6,10 @@ source "https://rubygems.org"
 
 ruby "3.1.3"
 
-gem "scraperwiki", git: "https://github.com/openaustralia/scraperwiki-ruby.git", branch: "morph_defaults"
+gem "sqlite_magic"
 gem "mechanize"
 gem "pry"
+gem "tty-cursor"
+gem "tty-progressbar"
+gem "zeitwerk"
+gem "rspec"
