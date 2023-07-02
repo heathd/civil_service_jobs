@@ -28,6 +28,6 @@ class CivilServiceJobsScraper::JobTeaser
   end
 
   def job_page_url
-    li.css('.search-results-job-box-title a').attr('href')
+    li.css('.search-results-job-box-title a').attr('href').to_s
   end
 end
