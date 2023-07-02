@@ -34,4 +34,20 @@ RSpec.describe CivilServiceJobsScraper::Page::ResultPage do
 			expect(result_page.job_list.first).to be_instance_of(CivilServiceJobsScraper::Page::JobTeaser)
 		end
 	end
+
+	describe "#pagination_links" do
+		it "extracts the numbered pagination links" do
+			expect(result_page.pagination_links.keys).to eq([2,3,4,5,6,7,94,95])
+			expect(result_page.pagination_links).to match({
+				 2 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID=Y29ud"),
+				 3 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID="),
+				 4 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID="),
+				 5 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID="),
+				 6 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID="),
+				 7 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID="),
+				94 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID="),
+				95 => a_string_starting_with("https://www.civilservicejobs.service.gov.uk/csr/index.cgi?SID=")
+			})
+		end
+	end
 end

@@ -13,7 +13,7 @@ class CivilServiceJobsScraper::ResultNavigator
     @page_status_map.complete!(result_page)
     result_page.enqueue_job_detail_fetchers!(result_page)
 
-    pages = result_page.pagination.pages
+    pages = result_page.pagination_links
     pages.each do |page_number, url|
       next if @page_status_map.started?(page_number)
       @page_status_map.fetching!(page_number)
