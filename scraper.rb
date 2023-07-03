@@ -6,7 +6,7 @@ loader.setup
 require 'mechanize'
 require 'pry'
 
-NUM_THREADS = 2
+NUM_THREADS = 4
 
 STATUS = CivilServiceJobsScraper::StatusDisplay.new(num_threads: NUM_THREADS)
 STATUS.clear_screen

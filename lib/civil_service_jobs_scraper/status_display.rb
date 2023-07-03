@@ -9,6 +9,8 @@ class CivilServiceJobsScraper::StatusDisplay
     @mutex = Mutex.new
     @emptying_progress = nil
     @counters = {}
+    @per_page_counters = {}
+    @page_statuses = {}
   end
 
   def clear_screen
@@ -27,7 +29,7 @@ class CivilServiceJobsScraper::StatusDisplay
     end
   end
 
-  def increment(counter_name)
+  def increment(counter_name, page_number)
     @mutex.synchronize do
       @counters[counter_name] ||= 0
       @counters[counter_name] += 1
@@ -36,6 +38,17 @@ class CivilServiceJobsScraper::StatusDisplay
       print TTY::Cursor.column(0)
 
       print @counters.map {|name, value| "#{name}: #{value}"}.join(" ")
+
+      if page_number
+        @per_page_counters[page_number] ||= {}
+        @per_page_counters[page_number][counter_name] ||= 0
+        @per_page_counters[page_number][counter_name] += 1
+
+        print TTY::Cursor.row(num_threads + 3 + page_number)
+        print TTY::Cursor.column(0)
+        print "#{page_number}: #{@page_statuses[page_number]} "
+        print @per_page_counters[page_number].map {|name, value| "#{name}: #{value}"}.join(" ")
+      end
     end
   end
 
@@ -61,6 +74,7 @@ class CivilServiceJobsScraper::StatusDisplay
       print TTY::Cursor.row(num_threads + 3 + page_number)
       print TTY::Cursor.column(0)
       print "#{page_number}: #{status}"
+      @page_statuses[page_number] = status
     end
   end
 
