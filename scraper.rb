@@ -8,7 +8,7 @@ require 'pry'
 
 NUM_THREADS = 4
 
-STATUS = if ARGS[0] == "--line-logger"
+STATUS = if ARGV[0] == "--line-logger"
 	CivilServiceJobsScraper::LineBasedStatusDisplay.new(num_threads: NUM_THREADS)
 else
 	CivilServiceJobsScraper::TtyStatusDisplay.new(num_threads: NUM_THREADS)
