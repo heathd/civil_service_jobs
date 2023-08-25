@@ -8,7 +8,11 @@ require 'pry'
 
 NUM_THREADS = 4
 
-STATUS = CivilServiceJobsScraper::StatusDisplay.new(num_threads: NUM_THREADS)
+STATUS = if ARGS[0] == "--line-logger"
+	CivilServiceJobsScraper::LineBasedStatusDisplay.new(num_threads: NUM_THREADS)
+else
+	CivilServiceJobsScraper::TtyStatusDisplay.new(num_threads: NUM_THREADS)
+end 
 STATUS.clear_screen
 
 agent = Mechanize.new

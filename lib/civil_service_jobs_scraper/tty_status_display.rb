@@ -1,7 +1,7 @@
 require 'tty-cursor'
 require 'tty-progressbar'
 
-class CivilServiceJobsScraper::StatusDisplay
+class CivilServiceJobsScraper::TtyStatusDisplay
   attr_reader :num_threads
 
   def initialize(num_threads:)
