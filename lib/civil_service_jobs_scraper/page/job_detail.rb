@@ -20,7 +20,7 @@ private
   end
 
   def db_friendly_name(name)
-    name.downcase.gsub(" ", "_")
+    name.downcase.gsub(" ", "_").to_sym
   end
 
   def side_panel_fields_kv
