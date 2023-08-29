@@ -28,5 +28,15 @@ jobs:
       with:
         ruby-version: 3.1
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+    - uses: actions/download-artifact@v3
+      with:
+        name: data.sqlite
+        path: data.sqlite
+
     - name: Run tests
       run: bundle exec ruby ./scraper.rb --line-logger
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: data.sqlite
+        path: data.sqlite
