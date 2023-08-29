@@ -28,12 +28,11 @@ jobs:
       with:
         ruby-version: 3.1
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-    - uses: actions/download-artifact@v3
 
     - name: Run tests
       run: bundle exec ruby ./scraper.rb --line-logger
 
-    - uses: actions/upload-artifact@v3
+    - uses: EndBug/add-and-commit@v8
       with:
-        name: data.sqlite
-        path: data.sqlite
+        message: 'Update jobs data'
+        add: 'data.sqlite'
