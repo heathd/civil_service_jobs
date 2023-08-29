@@ -32,6 +32,7 @@ jobs:
       with:
         name: data.sqlite
         path: data.sqlite
+        if-no-files-found: warn
 
     - name: Run tests
       run: bundle exec ruby ./scraper.rb --line-logger
