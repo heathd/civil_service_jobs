@@ -8,11 +8,16 @@ require 'pry'
 require 'optparse'
 
 options = {
+	db_file: 'data.sqlite',
 	logger: :tty
 }
 
 OptionParser.new do |opts|
   opts.banner = "Usage: scraper.rb [options]"
+
+  opts.on("-d FILENAME", "--db FILENAME", "Use FILENAME to store database") do |filename|
+    options[:db_file] = filename
+  end  
 
   opts.on("--line-logger", "Use line based logger") do |v|
     options[:logger] = :line
@@ -44,7 +49,7 @@ first_result_page = CivilServiceJobsScraper::Page::ResultPage.new(
 n = CivilServiceJobsScraper::ResultNavigator.new(
 	agent: agent, 
 	worker_pool: CivilServiceJobsScraper::Worker.new(num_threads: NUM_THREADS, status_display: STATUS).start!, 
-	results_store: CivilServiceJobsScraper::ResultStore.new(limit: options[:limit_jobs]), 
+	results_store: CivilServiceJobsScraper::ResultStore.new(db_file: options[:db_file], limit: options[:limit_jobs]), 
 	status_display: STATUS,
 	limit_pages: options[:limit_pages]
 )

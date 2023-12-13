@@ -1,8 +1,8 @@
 require 'sqlite_magic'
 
 class CivilServiceJobsScraper::ResultStore
-  def initialize(limit: nil)
-    @db = SqliteMagic::Connection.new('data.sqlite')
+  def initialize(db_file: 'data.sqlite', limit: nil)
+    @db = SqliteMagic::Connection.new(db_file)
     begin
       @db.create_table(:data, [:refcode], [:refcode])
     rescue SQLite3::SQLException => _
