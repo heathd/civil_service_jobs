@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Ruby
     # To automatically get bug fixes and new Ruby versions for ruby/setup-ruby,
     # change this to (see https://github.com/ruby/setup-ruby#versioning):
@@ -32,7 +32,7 @@ jobs:
     - name: Run scraper
       run: bundle exec ruby ./scraper.rb --line-logger --limit-pages 3 -d csj.sqlite
 
-    - uses: EndBug/add-and-commit@v8
+    - uses: EndBug/add-and-commit@v9
       with:
         message: 'Update jobs data'
         add: 'csj.sqlite'
