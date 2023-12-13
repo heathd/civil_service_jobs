@@ -39,13 +39,20 @@ class CivilServiceJobsScraper::ResultPageDownloadTracker
     end
   end
 
+  def skipped!(page_number)
+    status_display.result_page(page_number, "skipped")
+
+    @page_status_mutex.synchronize do
+      @page_status_map[page_number] = :skipped
+    end
+  end
+
   def all_downloaded?
     @page_status_mutex.synchronize do
       if @last_page.nil?
         false
       else
-        @page_status_map.keys.sort == (1..@last_page).to_a &&
-          @page_status_map.all? {|k,v| v == :downloaded}
+        @page_status_map.all? {|k,v| %I{downloaded skipped}.include?(v)}
       end
     end
   end

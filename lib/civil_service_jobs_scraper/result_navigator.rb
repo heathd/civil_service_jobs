@@ -2,12 +2,14 @@
 class CivilServiceJobsScraper::ResultNavigator
   attr_reader :agent, :worker_pool, :results_store, :result_page_download_tracker, :status_display
 
-  def initialize(agent:, worker_pool:, results_store:, status_display:)
+  def initialize(agent:, worker_pool:, results_store:, status_display:, limit_pages: nil)
     @worker_pool = worker_pool
     @results_store = results_store
     @agent = agent
     @result_page_download_tracker = CivilServiceJobsScraper::ResultPageDownloadTracker.new(status_display: status_display)
     @status_display = status_display
+    @page_counter = 0
+    @limit_pages = limit_pages
   end
 
   def mark_complete_and_traverse_from(result_page)
@@ -17,11 +19,17 @@ class CivilServiceJobsScraper::ResultNavigator
     pages = result_page.pagination_links
     pages.each do |page_number, url|
       next if result_page_download_tracker.started?(page_number)
-      result_page_download_tracker.fetching!(page_number)
 
-      worker_pool.enqueue do |thread_num| 
-        r = CivilServiceJobsScraper::Page::ResultPage.new(agent.get(url))
-        mark_complete_and_traverse_from(r)
+      @page_counter += 1
+      if @limit_pages && @page_counter >= @limit_pages
+        result_page_download_tracker.skipped!(page_number)  
+      else
+        result_page_download_tracker.fetching!(page_number)
+
+        worker_pool.enqueue do |thread_num| 
+          r = CivilServiceJobsScraper::Page::ResultPage.new(agent.get(url))
+          mark_complete_and_traverse_from(r)
+        end
       end
     end
   end
@@ -31,7 +39,7 @@ class CivilServiceJobsScraper::ResultNavigator
     skipped = enqueued = fetched = complete = 0
 
     result_page.job_list.each do |job_teaser|
-      if results_store.exists?(job_teaser)
+      if results_store.exists?(job_teaser) || results_store.should_skip?(job_teaser)
         status_display.increment(:skip, result_page.current_page)
         skipped += 1 
         next
