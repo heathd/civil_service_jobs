@@ -30,7 +30,7 @@ jobs:
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
 
     - name: Run tests
-      run: bundle exec ruby ./scraper.rb --line-logger
+      run: bundle exec ruby ./scraper.rb --line-logger --limit-pages 3
 
     - uses: EndBug/add-and-commit@v8
       with:
