@@ -9,6 +9,24 @@ name: Scrape Civil Service Jobs
 
 on:
   workflow_dispatch:
+    inputs:
+      limitPages:
+        description: 'Limit number of pages fetched'
+        required: false
+        type: number
+      limitJobs:
+        description: 'Limit number of jobs fetched'
+        required: false
+        type: number
+
+jobs:
+  print-tag:
+    runs-on: ubuntu-latest
+    if:  ${{ inputs.print_tags }} 
+    steps:
+      - name: Print the input tag to STDOUT
+        run: echo  The tags are ${{ inputs.tags }} 
+
   
 permissions:
   contents: write
@@ -30,7 +48,7 @@ jobs:
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
 
     - name: Run scraper
-      run: bundle exec ruby ./scraper.rb --line-logger --limit-pages 3 -d csj.sqlite
+      run: bundle exec ruby ./scraper.rb --line-logger ${{ inputs.limitPages > 0 && format('--limit-pages {0}', inputs.limitPages) }}  -d csj.sqlite
 
     - uses: EndBug/add-and-commit@v9
       with:
