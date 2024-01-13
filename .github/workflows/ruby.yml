@@ -42,10 +42,28 @@ jobs:
         ruby-version: 3.1
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
 
+    - name: Extract job database from tgz
+      uses: a7ul/tar-action@0349c8af1c0926712da20ad4b0ae96918e83cdd1
+      id: extract
+      with:
+        command: x
+        cwd: ./
+        files: csj.tar.gz
+
     - name: Run scraper
       run: bundle exec ruby ./scraper.rb --line-logger ${{ inputs.limitPages > 0 && format('--limit-pages {0}', inputs.limitPages) }}  -d csj.sqlite
+
+    - name: Compress job database to tgz
+      uses: a7ul/tar-action@0349c8af1c0926712da20ad4b0ae96918e83cdd1
+      id: compress
+      with:
+        command: c
+        cwd: ./
+        files: |
+          ./csj.sqlite
+        outPath: csj.tar.gz
 
     - uses: EndBug/add-and-commit@v9
       with:
         message: 'Update jobs data'
-        add: 'csj.sqlite'
+        add: 'csj.tar.gz'
