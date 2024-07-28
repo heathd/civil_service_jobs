@@ -9,15 +9,6 @@ name: Push to s3
 
 on:
   workflow_dispatch:
-    inputs:
-      limitPages:
-        description: 'Limit number of pages fetched'
-        required: false
-        type: number
-      limitJobs:
-        description: 'Limit number of jobs fetched'
-        required: false
-        type: number
 
 jobs:
   push-to-s3:
