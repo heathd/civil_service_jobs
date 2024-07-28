@@ -91,9 +91,9 @@ data "aws_iam_policy_document" "github_action_role_policy" {
       identifiers = [aws_iam_openid_connect_provider.github_actions_oidc_role.arn]
     }
     condition {
-      test = "StringLike"
+      test = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = ["repo:heathd/civil_service_jobs:ref:refs/heads/*"]
+      values = ["repo:heathd/civil_service_jobs:ref:refs/heads/main"]
     }
   }
 }
