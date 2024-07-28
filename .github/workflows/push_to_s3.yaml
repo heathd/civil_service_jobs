@@ -1,0 +1,47 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will download a prebuilt Ruby version, install dependencies and run tests with Rake
+# For more information see: https://github.com/marketplace/actions/setup-ruby-jruby-and-truffleruby
+
+name: Push to s3
+
+on:
+  workflow_dispatch:
+    inputs:
+      limitPages:
+        description: 'Limit number of pages fetched'
+        required: false
+        type: number
+      limitJobs:
+        description: 'Limit number of jobs fetched'
+        required: false
+        type: number
+
+jobs:
+  push-to-s3:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Ruby
+    # To automatically get bug fixes and new Ruby versions for ruby/setup-ruby,
+    # change this to (see https://github.com/ruby/setup-ruby#versioning):
+    # uses: ruby/setup-ruby@v1
+      uses: ruby/setup-ruby@55283cc23133118229fd3f97f9336ee23a179fcf # v1.146.0
+      with:
+        ruby-version: 3.1
+        bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+
+    - name: Authenticate to AWS using OIDC
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::542188523718:role/github_action_role
+        aws-region: eu-west-1
+
+    - name: Push file to s3
+      run: bundle exec ruby ./upload_to_s3.rb
+  
+  
