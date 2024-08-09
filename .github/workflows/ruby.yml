@@ -43,6 +43,15 @@ jobs:
         ruby-version: 3.1
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
 
+    - name: Authenticate to AWS using OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::542188523718:role/github_action_role
+        aws-region: eu-west-1
+
+    - name: Download from s3
+      run: bundle exec ruby ./download_from_s3.rb
+
     - name: Extract job database from tgz
       uses: a7ul/tar-action@0349c8af1c0926712da20ad4b0ae96918e83cdd1
       id: extract
@@ -63,17 +72,6 @@ jobs:
         files: |
           ./csj.sqlite
         outPath: csj.tar.gz
-
-    - uses: EndBug/add-and-commit@1bad3abcf0d6ec49a5857d124b0bfb52dc7bb081
-      with:
-        message: 'Update jobs data'
-        add: 'csj.tar.gz'
-
-    - name: Authenticate to AWS using OIDC
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: arn:aws:iam::542188523718:role/github_action_role
-        aws-region: eu-west-1
 
     - name: Push file to s3
       run: bundle exec ruby ./upload_to_s3.rb

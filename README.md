@@ -22,6 +22,16 @@ Fixtures in the `spec/fixtures` folder contain copies of the HTML source from
 the Civil Service Jobs website. This is public sector information licensed
 under the Open Government Licence v3.0.
 
+## Data under Open Government License
+
+The data downloaded by this scraper is collected under [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
+
+You can access a copy of the data as a tar+gzipped sqlite database at the following URL:
+
+```
+https://civil-service-jobs-data.s3.eu-west-1.amazonaws.com/csj.tar.gz
+```
+
 ## License
 
 This source code is licensed under the GNU Affero Public License v3.0
