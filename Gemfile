@@ -4,7 +4,7 @@
 
 source "https://rubygems.org"
 
-ruby "3.1.4"
+ruby File.read("./.ruby-version")
 
 gem "sqlite_magic"
 gem "mechanize"
