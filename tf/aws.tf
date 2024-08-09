@@ -114,7 +114,8 @@ resource "aws_iam_policy" "github_action_s3_policy" {
       {
         Action = [
           "s3:PutObject",
-          "s3:PutObjectAcl"
+          "s3:PutObjectAcl",
+          "s3:GetObject"
         ]
         Effect   = "Allow"
         Resource = "${aws_s3_bucket.civil_service_jobs_data.arn}/*"
