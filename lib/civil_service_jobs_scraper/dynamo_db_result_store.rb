@@ -18,8 +18,14 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     string_attr :operation
     string_attr :message
 
-    def self.find_operations(type)
-      self.scan(filter_expression: "")
+    def self.find_by_operation(operation_value)
+      # Use scan method to filter items by the operation attribute
+      self.scan(
+        filter_expression: "operation = :operation_val",
+        expression_attribute_values: {
+          ":operation_val" => operation_value
+        }
+      )
     end
   end
 
