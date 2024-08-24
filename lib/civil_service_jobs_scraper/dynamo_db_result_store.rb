@@ -166,7 +166,7 @@ class CivilServiceJobsScraper::DynamoDbResultStore
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
   def exists?(job)
-    !JobRecord.find(refcode: job.refcode).nil?
+    !JobRecord.find(refcode: job.refcode, projection_expression: "refcode").nil?
   end
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
