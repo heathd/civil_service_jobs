@@ -1,8 +1,13 @@
+# typed: true
 # require 'dynamoid'
 require "aws-record"
+require 'date'
+require 'time'
 
 class CivilServiceJobsScraper::DynamoDbResultStore
-  class Job
+  extend T::Sig
+
+  class JobRecord
     include Aws::Record
 
     set_table_name "jobs"
@@ -26,21 +31,22 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     string_attr :job_grade_0
     string_attr :job_grade_1
     string_attr :length_of_employment
+    datetime_attr :created_at, default_value: lambda { DateTime.now }
     map_attr :extra_fields
   end
 
   def self.ensure_table_exists!
-    return if Job.table_exists?
-    Aws::Record::TableMigration.new(CivilServiceJobsScraper::DynamoDbResultStore::Job).create!({
+    return if JobRecord.table_exists?
+    Aws::Record::TableMigration.new(CivilServiceJobsScraper::DynamoDbResultStore::JobRecord).create!({
       billing_mode: "PAY_PER_REQUEST"
     })
   end
 
   def self.delete_all!
-    all_jobs = Job.scan(projection_expression: "refcode")
+    all_jobs = JobRecord.scan(projection_expression: "refcode")
     return if all_jobs.empty?
 
-    operation = Aws::Record::Batch.write(client: Job.dynamodb_client) do |db|
+    operation = Aws::Record::Batch.write(client: JobRecord.dynamodb_client) do |db|
       all_jobs.each do |job|
         db.delete(job)
       end
@@ -51,10 +57,10 @@ class CivilServiceJobsScraper::DynamoDbResultStore
 
   end
 
-  def add(attributes)
-    refcode = attributes["refcode"]
-    job = begin
-      Job.find(refcode: refcode)
+  sig {params(job: CivilServiceJobsScraper::Model::Job).void}
+  def add(job)
+    job_record = begin
+      JobRecord.find(refcode: job.refcode)
     rescue Aws::DynamoDB::Errors::ResourceNotFoundException
       # ,
       #     Dynamoid::Errors::RecordNotFound
@@ -63,19 +69,20 @@ class CivilServiceJobsScraper::DynamoDbResultStore
       nil
     end
 
-    normalised_attributes = normalise_attributes(attributes)
-    if job
-      job.update!(**normalised_attributes)
+    normalised_attributes = normalise_attributes(job)
+    if job_record
+      job_record.update!(**normalised_attributes)
     else
-      job = Job.new(**normalised_attributes)
-      job.save!
+      job_record = JobRecord.new(**normalised_attributes)
+      job_record.save!
     end
   end
 
-  def normalise_attributes(attributes)
-    normal_attrs = Job.attributes.attributes.keys - [:extra_fields]
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Hash[String, T.any(String, T::Hash[String, String])])}
+  def normalise_attributes(job)
+    normal_attrs = JobRecord.attributes.attributes.keys - [:extra_fields]
     normalised = {}
-    attributes.each do |k,v|
+    job.attributes.each do |k,v|
       if normal_attrs.include?(k.to_sym)
         normalised[k] = v
       else
@@ -86,11 +93,13 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     normalised
   end
 
+  sig {params(refcode: String).void}
   def find(refcode)
-    Job.find(refcode: refcode)
+    JobRecord.find(refcode: refcode)
   end
 
+  sig {params(block: T.proc.params(arg0: JobRecord).void).void}
   def each(&block)
-    Job.scan.each(&block)
+    JobRecord.scan.each(&block)
   end
 end

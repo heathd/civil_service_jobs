@@ -1,10 +1,13 @@
+# typed: true
 require 'zeitwerk'
 loader = Zeitwerk::Loader.new
 loader.push_dir(File.dirname(__FILE__) + "/lib")
 loader.setup
 $LOAD_PATH << File.dirname(__FILE__) + "/config"
 
-require "dynamoid_local_config"
+# require "dynamoid_local_config"
+require "sorbet_init"
+require "aws_record_local_config"
 
 require 'mechanize'
 require 'pry'
@@ -44,7 +47,7 @@ else
 end
 STATUS.clear_screen
 
-def scrape
+def scrape(options)
   agent = Mechanize.new
   start_page = agent.get("https://www.civilservicejobs.service.gov.uk/csr/index.cgi")
   first_result_page = CivilServiceJobsScraper::Page::ResultPage.new(
@@ -67,9 +70,18 @@ def transfer(options)
   results_store = CivilServiceJobsScraper::ResultStore.new(db_file: options[:db_file], limit: options[:limit_jobs])
   dynamodb_store = CivilServiceJobsScraper::DynamoDbResultStore.new()
 
-  results_store.each do |job|
-    puts job["refcode"]
+  count = results_store.count
+  i = 0
+  results_store.each do |sqlite_job_record|
+    if i % 1000 == 0
+      puts "\n#{i} of #{count}"
+    elsif i % 100 == 0
+      print "."
+    end
+
+    job = CivilServiceJobsScraper::Model::Job.from_sqlite_record(sqlite_job_record)
     dynamodb_store.add(job)
+    i+=1
   end
 end
 
@@ -83,4 +95,4 @@ def count(options)
 end
 
 
-count(options)
+transfer(options)

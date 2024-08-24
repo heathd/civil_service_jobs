@@ -1,6 +1,8 @@
+#typed: true
 require 'sqlite_magic'
 
 class CivilServiceJobsScraper::ResultStore
+  sig {params(db_file: String, limit: T.nilable(Integer)).void}
   def initialize(db_file: 'data.sqlite', limit: nil)
     @db = SqliteMagic::Connection.new(db_file)
     begin
@@ -13,10 +15,15 @@ class CivilServiceJobsScraper::ResultStore
     @download_counter = 0
   end
 
+  sig {params(block: T.proc.params(arg0: T::Hash[String, String]).void).void}
   def each(&block)
     @db.execute("SELECT * FROM data").each do |row|
       yield(row)
     end
+  end
+
+  def count
+    @db.execute("SELECT count(*) FROM data").first.values.first
   end
 
   def exists?(job)

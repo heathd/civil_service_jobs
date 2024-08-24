@@ -7,7 +7,7 @@ RSpec.describe CivilServiceJobsScraper::DynamoDbResultStore do
 
   before(:each) do
     begin
-      CivilServiceJobsScraper::DynamoDbResultStore::Job.configure_client(
+      CivilServiceJobsScraper::DynamoDbResultStore::JobRecord.configure_client(
         region: "localhost",
         access_key_id: "foo",
         secret_access_key: "bar",
