@@ -92,6 +92,10 @@ resource "aws_dynamodb_table" "civil_service_jobs" {
     type = "S"  # S for String, N for Number, B for Binary
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
   tags = {
     Environment = "production"
     Project     = "Civil Service Jobs"
@@ -106,6 +110,10 @@ resource "aws_dynamodb_table" "civil_service_jobs_activity" {
   attribute {
     name = "id"
     type = "S"  # S for String, N for Number, B for Binary
+  }
+
+  point_in_time_recovery {
+    enabled = true
   }
 
   tags = {
