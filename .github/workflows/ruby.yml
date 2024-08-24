@@ -49,31 +49,5 @@ jobs:
         role-to-assume: arn:aws:iam::542188523718:role/github_action_role
         aws-region: eu-west-1
 
-    - name: Download from s3
-      run: bundle exec ruby ./download_from_s3.rb
-
-    - name: Extract job database from tgz
-      uses: a7ul/tar-action@ed9cbd44fc9276db29ea2fb1f8adf3d7e0691589
-      id: extract
-      with:
-        command: x
-        cwd: ./
-        files: csj.tar.gz
-        outPath: .
-
     - name: Run scraper
       run: bundle exec ruby ./scraper.rb --line-logger ${{ inputs.limitPages > 0 && format('--limit-pages {0}', inputs.limitPages) }}  -d csj.sqlite
-
-    - name: Compress job database to tgz
-      uses: a7ul/tar-action@ed9cbd44fc9276db29ea2fb1f8adf3d7e0691589
-      id: compress
-      with:
-        command: c
-        cwd: ./
-        files: |
-          ./csj.sqlite
-        outPath: csj.tar.gz
-
-    - name: Push file to s3
-      run: bundle exec ruby ./upload_to_s3.rb
-  
