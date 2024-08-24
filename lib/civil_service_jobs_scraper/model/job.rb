@@ -11,7 +11,7 @@ class CivilServiceJobsScraper::Model::Job
 
   sig {params(
     job_teaser: CivilServiceJobsScraper::Page::JobTeaser,
-    job_detail: CivilServiceJobsScraper::Page::JobDetail).void}
+    job_detail: CivilServiceJobsScraper::Page::JobDetail).returns(CivilServiceJobsScraper::Model::Job)}
   def self.from_scrape(job_teaser, job_detail)
     @job_teaser = job_teaser
     @job_detail = job_detail

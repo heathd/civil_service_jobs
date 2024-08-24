@@ -56,7 +56,7 @@ def scrape(options)
   n = CivilServiceJobsScraper::ResultNavigator.new(
     agent: agent,
     worker_pool: CivilServiceJobsScraper::Worker.new(num_threads: NUM_THREADS, status_display: STATUS).start!,
-    results_store: CivilServiceJobsScraper::ResultStore.new(db_file: options[:db_file], limit: options[:limit_jobs]),
+    results_store: CivilServiceJobsScraper::DynamoDbResultStore.new(limit: options[:limit_jobs]),
     status_display: STATUS,
     limit_pages: options[:limit_pages]
   )
@@ -98,7 +98,7 @@ def count(options)
 end
 
 if CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.operation_never_run?("Complete transfer")
-transfer(options)
+  transfer(options)
 end
 
 scrape(options)

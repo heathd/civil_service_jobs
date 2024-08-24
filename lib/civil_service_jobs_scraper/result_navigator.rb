@@ -1,13 +1,16 @@
 # typed: true
 
 class CivilServiceJobsScraper::ResultNavigator
-  attr_reader :agent, :worker_pool, :results_store, :result_page_download_tracker, :status_display
+  attr_reader :agent, :worker_pool, :result_page_download_tracker, :status_display
+
+  sig { returns(CivilServiceJobsScraper::DynamoDbResultStore) }
+  attr_reader :results_store
 
   sig {
     params(
       agent: Mechanize,
       worker_pool: CivilServiceJobsScraper::Worker,
-      results_store: CivilServiceJobsScraper::ResultStore,
+      results_store: CivilServiceJobsScraper::DynamoDbResultStore,
       status_display: T.any(CivilServiceJobsScraper::LineBasedStatusDisplay, CivilServiceJobsScraper::TtyStatusDisplay),
       limit_pages: T.nilable(Integer)
     ).void
@@ -66,7 +69,8 @@ class CivilServiceJobsScraper::ResultNavigator
         fetched += 1
 
         job_page = CivilServiceJobsScraper::Page::JobDetail.new(agent.get(job_teaser.job_page_url))
-        results_store.add(job_teaser, job_page)
+        job = CivilServiceJobsScraper::Model::Job.from_scrape(job_teaser, job_page)
+        results_store.add(job)
 
         status_display.thread_status(thread_num, "DONE  #{job_teaser.refcode}")
         status_display.increment(:complete, result_page.current_page)

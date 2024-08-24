@@ -26,10 +26,12 @@ class CivilServiceJobsScraper::ResultStore
     @db.execute("SELECT count(*) FROM data").first.values.first
   end
 
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
   def exists?(job)
     @db.execute("select * from data where refcode=:refcode", job.refcode).any?
   end
 
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
   def should_skip?(job)
     @limit && @download_counter >= @limit
   end
