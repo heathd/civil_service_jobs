@@ -172,11 +172,9 @@ class CivilServiceJobsScraper::DynamoDbResultStore
   def add(job)
     @download_counter += 1
 
-    if job_already_stored?
-      main_record = JobMainRecord.find(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
-      body_record = JobBodyRecord.find(refcode: job.refcode, record_type: JobBodyRecord::RECORD_TYPE)
-      extra_record = JobExtraFieldsRecord.find(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE)
-    end
+    main_record = JobMainRecord.find(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
+    body_record = JobBodyRecord.find(refcode: job.refcode, record_type: JobBodyRecord::RECORD_TYPE) if main_record
+    extra_record = JobExtraFieldsRecord.find(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE) if main_record
 
     main_record ||= JobMainRecord.new(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
     main_attrs = slice_attributes(job, JobMainRecord.attributes.attributes.keys)
