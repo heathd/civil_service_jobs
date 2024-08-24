@@ -97,8 +97,6 @@ def count(options)
   puts count
 end
 
-CivilServiceJobsScraper::DynamoDbResultStore.delete_all!
-
 if CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.operation_never_run?("Complete transfer")
   transfer(options)
 end
