@@ -69,6 +69,7 @@ end
 def transfer(options)
   results_store = CivilServiceJobsScraper::ResultStore.new(db_file: options[:db_file], limit: options[:limit_jobs])
   dynamodb_store = CivilServiceJobsScraper::DynamoDbResultStore.new()
+  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Start transfer").save!
 
   count = results_store.count
   i = 0
@@ -83,6 +84,8 @@ def transfer(options)
     dynamodb_store.add(job)
     i+=1
   end
+
+  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Complete transfer", message: "#{count} records transferred").save!
 end
 
 def count(options)
@@ -94,5 +97,8 @@ def count(options)
   puts count
 end
 
-
+if CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.operation_never_run?("Complete transfer")
 transfer(options)
+end
+
+scrape(options)

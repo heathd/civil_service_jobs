@@ -27,6 +27,10 @@ class CivilServiceJobsScraper::DynamoDbResultStore
         }
       )
     end
+
+    def self.operation_never_run?(operation)
+      find_by_operation(operation).empty?
+    end
   end
 
   class JobRecord
@@ -106,6 +110,12 @@ class CivilServiceJobsScraper::DynamoDbResultStore
 
   end
 
+  sig {params(limit: T.nilable(Integer)).void}
+  def initialize(limit: nil)
+    @limit = limit
+    @download_counter = 0
+  end
+
   sig {params(job: CivilServiceJobsScraper::Model::Job).void}
   def add(job)
     job_record = begin
@@ -117,6 +127,8 @@ class CivilServiceJobsScraper::DynamoDbResultStore
       # OR table exists but record not found
       nil
     end
+
+    @download_counter += 1
 
     normalised_attributes = normalise_attributes(job)
     if job_record
@@ -150,5 +162,19 @@ class CivilServiceJobsScraper::DynamoDbResultStore
   sig {params(block: T.nilable(T.proc.params(arg0: JobRecord).void)).returns(Enumerable)}
   def each(&block)
     JobRecord.scan.each(&block)
+  end
+
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
+  def exists?(job)
+    !JobRecord.find(refcode: job.refcode).nil?
+  end
+
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
+  def should_skip?(job)
+    if @limit.nil?
+      false
+    else
+      @download_counter >= @limit
+    end
   end
 end
