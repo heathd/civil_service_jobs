@@ -5,7 +5,7 @@ RSpec.describe CivilServiceJobsScraper::Page::JobDetail do
 	let(:spec_path) { Pathname.new(File.dirname(__FILE__)) + "../../../fixtures" }
 	let(:fixture_file_uri) { "file://" + (spec_path + "job_detail_page.html").to_s }
 	let(:page) { agent.get(fixture_file_uri) }
-	let(:status_display) { instance_double(CivilServiceJobsScraper::StatusDisplay) }
+	let(:status_display) { instance_double(CivilServiceJobsScraper::TtyStatusDisplay) }
 	subject(:job_detail) { CivilServiceJobsScraper::Page::JobDetail.new(page) }
 
 	it "extracts side panel fields" do

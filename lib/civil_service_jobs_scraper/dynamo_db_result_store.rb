@@ -33,12 +33,20 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     end
   end
 
-  class JobRecord
+  class JobRecordBase
     include Aws::Record
 
     set_table_name "jobs"
 
     string_attr :refcode, hash_key: true
+    string_attr :record_type, range_key: true
+  end
+
+  class JobMainRecord < JobRecordBase
+    include Aws::Record
+
+    RECORD_TYPE = "Main"
+
     string_attr :title
     string_attr :department
     string_attr :location
@@ -48,21 +56,36 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     string_attr :stage
     string_attr :reference_number
     string_attr :job_grade
+    string_attr :number_of_jobs_available
+    string_attr :job_grade_0
+    string_attr :job_grade_1
+
     string_attr :contract_type
     string_attr :business_area
     string_attr :type_of_role
     string_attr :working_pattern
-    string_attr :number_of_jobs_available
-    string_attr :body
-    string_attr :job_grade_0
-    string_attr :job_grade_1
     string_attr :length_of_employment
     datetime_attr :created_at, default_value: lambda { DateTime.now }
+  end
+
+
+  class JobBodyRecord < JobRecordBase
+    include Aws::Record
+    RECORD_TYPE = "Body"
+
+    string_attr :body
+  end
+
+  class JobExtraFieldsRecord < JobRecordBase
+    include Aws::Record
+
+    RECORD_TYPE = "Extra"
+
     map_attr :extra_fields
   end
 
   def self.configure_client(client)
-    CivilServiceJobsScraper::DynamoDbResultStore::JobRecord.configure_client(client: client)
+    CivilServiceJobsScraper::DynamoDbResultStore::JobRecordBase.configure_client(client: client)
     CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.configure_client(client: client)
   end
 
@@ -71,9 +94,9 @@ class CivilServiceJobsScraper::DynamoDbResultStore
       billing_mode: "PAY_PER_REQUEST"
     }) unless ActivityRecord.table_exists?
 
-    Aws::Record::TableMigration.new(CivilServiceJobsScraper::DynamoDbResultStore::JobRecord).create!({
+    Aws::Record::TableMigration.new(CivilServiceJobsScraper::DynamoDbResultStore::JobRecordBase).create!({
       billing_mode: "PAY_PER_REQUEST"
-    }) unless JobRecord.table_exists?
+    }) unless JobRecordBase.table_exists?
   end
 
   def self.delete_all!
@@ -96,10 +119,10 @@ class CivilServiceJobsScraper::DynamoDbResultStore
   end
 
   def self.delete_jobs!
-    all_jobs = JobRecord.scan(projection_expression: "refcode")
+    all_jobs = JobRecordBase.scan()
     return if all_jobs.empty?
 
-    operation = Aws::Record::Batch.write(client: JobRecord.dynamodb_client) do |db|
+    operation = Aws::Record::Batch.write(client: JobRecordBase.dynamodb_client) do |db|
       all_jobs.each do |job|
         db.delete(job)
       end
@@ -118,55 +141,94 @@ class CivilServiceJobsScraper::DynamoDbResultStore
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).void}
   def add(job)
-    job_record = begin
-      JobRecord.find(refcode: job.refcode)
-    rescue Aws::DynamoDB::Errors::ResourceNotFoundException
-      # ,
-      #     Dynamoid::Errors::RecordNotFound
-      # # couldn't perform #find because the table doesn't exist yet
-      # OR table exists but record not found
-      nil
-    end
-
+    puts "adding #{job.refcode}"
     @download_counter += 1
 
-    normalised_attributes = normalise_attributes(job)
-    if job_record
-      job_record.update!(**normalised_attributes)
-    else
-      job_record = JobRecord.new(**normalised_attributes)
-      job_record.save!
+    main_record = JobMainRecord.find(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE) ||
+      JobMainRecord.new(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
+    main_attrs = slice_attributes(job, JobMainRecord.attributes.attributes.keys)
+    main_record.assign_attributes(main_attrs)
+    main_record.save!
+
+    body_record = JobBodyRecord.find(refcode: job.refcode, record_type: JobBodyRecord::RECORD_TYPE) ||
+      JobBodyRecord.new(record_type: JobBodyRecord::RECORD_TYPE)
+    body_attrs = slice_attributes(job, JobBodyRecord.attributes.attributes.keys)
+    body_record.assign_attributes(body_attrs)
+    body_record.save!
+
+    remaining_keys = job.attributes.keys.map(&:to_sym) - main_attrs.keys - body_attrs.keys
+    extra_fields = slice_attributes(job, remaining_keys)
+    if extra_fields.any?
+      extra_record = JobExtraFieldsRecord.find(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE) ||
+        JobExtraFieldsRecord.new(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE)
+      extra_record.extra_fields = extra_fields
+      extra_record.save!
     end
   end
 
-  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Hash[String, T.any(String, T::Hash[String, String])])}
-  def normalise_attributes(job)
-    normal_attrs = JobRecord.attributes.attributes.keys - [:extra_fields]
-    normalised = {}
-    job.attributes.each do |k,v|
-      if normal_attrs.include?(k.to_sym)
-        normalised[k] = v
+  sig {
+    params(job: CivilServiceJobsScraper::Model::Job, attribute_keys: T::Array[Symbol])
+      .returns(T::Hash[Symbol, String])}
+  def slice_attributes(job, attribute_keys)
+    attribute_keys.inject({}) do |memo, attr|
+      if job.has_attribute?(attr)
+        memo.merge(attr => job.attribute(attr))
       else
-        normalised[:extra_fields] ||= {}
-        normalised[:extra_fields][k] = v
+        memo
       end
     end
-    normalised
   end
 
-  sig {params(refcode: String).returns(JobRecord)}
+  # sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Hash[String, T.any(String, T::Hash[String, String])])}
+  # def normalise_attributes(job)
+
+  #   normal_attrs = JobRecord.attributes.attributes.keys - [:extra_fields]
+  #   normalised = {}
+  #   job.attributes.each do |k,v|
+  #     if normal_attrs.include?(k.to_sym)
+  #       normalised[k] = v
+  #     else
+  #       normalised[:extra_fields] ||= {}
+  #       normalised[:extra_fields][k] = v
+  #     end
+  #   end
+  #   normalised
+  # end
+
+  sig {params(refcode: String).returns(CivilServiceJobsScraper::Model::Job)}
   def find(refcode)
-    JobRecord.find(refcode: refcode)
+    main = JobMainRecord.find(refcode: refcode, record_type: JobMainRecord::RECORD_TYPE)
+    body = JobBodyRecord.find(refcode: refcode, record_type: JobBodyRecord::RECORD_TYPE)
+    extra = JobExtraFieldsRecord.find(refcode: refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE)
+    attrs = T.let(main.to_h, T::Hash[Symbol, String])
+    attrs[:body] = body.body if body
+    if extra
+      extra.extra_fields.each do |k, v|
+        attrs[k.to_sym] = v
+      end
+    end
+    CivilServiceJobsScraper::Model::Job.new(attrs)
   end
 
-  sig {params(block: T.nilable(T.proc.params(arg0: JobRecord).void)).returns(Enumerable)}
+  sig {params(block: T.nilable(T.proc.params(arg0: JobMainRecord).void)).returns(Enumerable)}
   def each(&block)
-    JobRecord.scan.each(&block)
+    JobMainRecord.scan(
+      filter_expression: "#T = :record_type",
+      expression_attribute_names: {
+        "#T" => "record_type",
+      },
+      expression_attribute_values: {
+        ":record_type" => JobMainRecord::RECORD_TYPE
+      }
+    ).each(&block)
   end
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
   def exists?(job)
-    !JobRecord.find(refcode: job.refcode, projection_expression: "refcode").nil?
+    !JobMainRecord.find(
+      refcode: job.refcode,
+      record_type: JobMainRecord::RECORD_TYPE
+    ).nil?
   end
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}

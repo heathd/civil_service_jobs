@@ -72,9 +72,13 @@ RSpec.describe CivilServiceJobsScraper::DynamoDbResultStore do
   end
 
   it "stores extra attributes of a job outside of the core fields" do
-    job = CivilServiceJobsScraper::Model::Job.new("refcode"=> "foo", "title"=> "Small Cheese", "extra_field" => "value")
+    job = CivilServiceJobsScraper::Model::Job.new(
+      "refcode"=> "foo",
+      "title"=> "Small Cheese",
+      "extra_field" => "value"
+    )
     rs.add(job)
-    expect(rs.find("foo").extra_fields).to eq({"extra_field" => "value"})
+    expect(rs.find("foo").attribute(:extra_field)).to eq("value")
   end
 
   it "can store an activity record" do

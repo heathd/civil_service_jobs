@@ -21,4 +21,5 @@ group :development do
   gem 'sorbet-runtime'
   gem 'sorbet'
   gem 'tapioca', require: false
+  gem "ruby-lsp-rspec", require: false
 end

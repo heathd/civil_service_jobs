@@ -43,11 +43,23 @@ class CivilServiceJobsScraper::Model::Job
     end
   end
 
+  sig {returns(String)}
   def refcode
     @fields['refcode']
   end
 
+  sig {returns(T::Hash[String, String])}
   def attributes
     @fields
+  end
+
+  sig {params(attr: T.any(String, Symbol)).returns(T::Boolean)}
+  def has_attribute?(attr)
+    fields.has_key?(attr.to_s)
+  end
+
+  sig {params(attr: T.any(String, Symbol)).returns(T.nilable(String))}
+  def attribute(attr)
+    fields[attr.to_s]
   end
 end
