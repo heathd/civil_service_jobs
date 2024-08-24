@@ -1,0 +1,1 @@
+dynamodb: java -Djava.library.path=vendor/dymamodb/DynamoDBLocal_lib -jar vendor/dynamodb/DynamoDBLocal.jar -sharedDb -dbPath data/

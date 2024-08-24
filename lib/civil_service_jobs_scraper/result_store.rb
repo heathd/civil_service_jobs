@@ -1,6 +1,8 @@
+#typed: true
 require 'sqlite_magic'
 
 class CivilServiceJobsScraper::ResultStore
+  sig {params(db_file: String, limit: T.nilable(Integer)).void}
   def initialize(db_file: 'data.sqlite', limit: nil)
     @db = SqliteMagic::Connection.new(db_file)
     begin
@@ -13,10 +15,25 @@ class CivilServiceJobsScraper::ResultStore
     @download_counter = 0
   end
 
+  sig {params(limit: T.nilable(Integer), block: T.proc.params(arg0: T::Hash[String, String]).void).void}
+  def each(limit: nil, &block)
+    query = "SELECT * FROM data"
+    query << " LIMIT #{limit}" if limit
+    @db.execute(query).each do |row|
+      yield(row)
+    end
+  end
+
+  def count
+    @db.execute("SELECT count(*) FROM data").first.values.first
+  end
+
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
   def exists?(job)
     @db.execute("select * from data where refcode=:refcode", job.refcode).any?
   end
 
+  sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}
   def should_skip?(job)
     @limit && @download_counter >= @limit
   end
@@ -29,4 +46,3 @@ class CivilServiceJobsScraper::ResultStore
     @db.save_data([:refcode], fields, 'data')
   end
 end
-

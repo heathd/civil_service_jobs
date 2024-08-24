@@ -59,6 +59,7 @@ jobs:
         command: x
         cwd: ./
         files: csj.tar.gz
+        outPath: .
 
     - name: Run scraper
       run: bundle exec ruby ./scraper.rb --line-logger ${{ inputs.limitPages > 0 && format('--limit-pages {0}', inputs.limitPages) }}  -d csj.sqlite

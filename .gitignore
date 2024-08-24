@@ -1,3 +1,7 @@
 # Ignore output of scraper
 data.sqlite
+dynamodb-local-metadata.json
+shared-local-instance.db
 tmp/**
+vendor/**
+data/**

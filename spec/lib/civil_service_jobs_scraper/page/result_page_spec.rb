@@ -6,9 +6,9 @@ RSpec.describe CivilServiceJobsScraper::Page::ResultPage do
 	let(:spec_path) { Pathname.new(File.dirname(__FILE__)) + "../../../fixtures" }
 	let(:fixture_file_uri) { "file://" + (spec_path + "result_page1.html").to_s }
 	let(:page) { agent.get(fixture_file_uri) }
-	let(:status_display) { instance_double(CivilServiceJobsScraper::StatusDisplay) }
+	let(:status_display) { instance_double(CivilServiceJobsScraper::TtyStatusDisplay) }
 	subject(:result_page) { CivilServiceJobsScraper::Page::ResultPage.new(page) }
-	
+
 	it "identifies the last page by scraping the pagination indicator" do
 		expect(result_page.last_page).to eq(95)
 	end
