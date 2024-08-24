@@ -32,7 +32,7 @@ class CivilServiceJobsScraper::LineBasedStatusDisplay
         @per_page_counters[page_number][counter_name] += 1
 
         puts "#{page_number}: #{@page_statuses[page_number]} "
-        puts @per_page_counters[page_number].map {|name, value| "#{name}: #{value}"}.join(" ")
+        puts @per_page_counters[page_number].map {|name, value| "#{page_number}: #{name}: #{value}"}.join(" ")
       end
     end
   end
