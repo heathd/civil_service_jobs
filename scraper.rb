@@ -72,39 +72,4 @@ def scrape(options)
   sleep(15)
 end
 
-def transfer(options)
-  results_store = CivilServiceJobsScraper::ResultStore.new(db_file: options[:db_file], limit: options[:limit_jobs])
-  dynamodb_store = CivilServiceJobsScraper::DynamoDbResultStore.new()
-  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Start transfer").save!
-
-  count = results_store.count
-  i = 0
-  results_store.each do |sqlite_job_record|
-    if i % 1000 == 0
-      puts "\n#{i} of #{count}"
-    elsif i % 100 == 0
-      print "."
-    end
-
-    job = CivilServiceJobsScraper::Model::Job.from_sqlite_record(sqlite_job_record)
-    dynamodb_store.add(job)
-    i+=1
-  end
-
-  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Complete transfer", message: "#{count} records transferred").save!
-end
-
-def count(options)
-  dynamodb_store = CivilServiceJobsScraper::DynamoDbResultStore.new()
-  count = 0
-  dynamodb_store.each do
-    count += 1
-  end
-  puts count
-end
-
-if CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.operation_never_run?("Complete transfer")
-  transfer(options)
-end
-
 scrape(options)

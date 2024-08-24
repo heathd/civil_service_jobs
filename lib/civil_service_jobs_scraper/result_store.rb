@@ -15,13 +15,11 @@ class CivilServiceJobsScraper::ResultStore
     @download_counter = 0
   end
 
-  sig {params(limit: T.nilable(Integer), block: T.proc.params(arg0: T::Hash[String, String]).void).void}
-  def each(limit: nil, &block)
+  sig {params(limit: T.nilable(Integer)).returns(T::Array[T::Hash[String, String]]) }
+  def all(limit: nil)
     query = "SELECT * FROM data"
     query << " LIMIT #{limit}" if limit
-    @db.execute(query).each do |row|
-      yield(row)
-    end
+    @db.execute(query)
   end
 
   def count
