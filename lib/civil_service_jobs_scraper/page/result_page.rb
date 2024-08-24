@@ -1,7 +1,10 @@
+#typed: true
 
 class CivilServiceJobsScraper::Page::ResultPage
+  sig {returns(Mechanize::Page)}
   attr_reader :page
 
+  sig {params(page: Mechanize::Page).void}
   def initialize(page)
     @page = page
   end
@@ -14,10 +17,10 @@ class CivilServiceJobsScraper::Page::ResultPage
       .select { |e| e.css('a').any? }
       .map { |e| e.css('a').first }
       .map { |a_tag| [a_tag.text.strip.to_i, a_tag.attr('href')] }
-    
+
     Hash[pages_list]
   end
-  
+
   def last_page
     e = list_elems.reject {|e| e.text =~ /^next/ }.last
     e.text.to_i
@@ -37,6 +40,7 @@ class CivilServiceJobsScraper::Page::ResultPage
     e && e.css('a').first.attr('href').to_s
   end
 
+  sig { returns(T::Array[CivilServiceJobsScraper::Page::JobTeaser]) }
   def job_list
     page
       .css('div.search-results-panel-main-inner ul[title="Job list"] li')

@@ -11,7 +11,7 @@ RSpec.describe CivilServiceJobsScraper::Page::JobTeaser do
 	it "has a refcode" do
 		expect(job_teaser.refcode).to eq("Reference : 296730")
 	end
-	
+
 	it "has a title" do
 		expect(job_teaser.title).to eq("Head of Policy Research")
 	end
@@ -31,6 +31,11 @@ RSpec.describe CivilServiceJobsScraper::Page::JobTeaser do
        stage: "",
        title: "Head of Policy Research",
 		})
+	end
+
+	it "can be built into Job model" do
+		job = CivilServiceJobsScraper::Model::Job.from_scrape(job_teaser)
+		expect(job.refcode).to eq("296730")
 	end
 
 end

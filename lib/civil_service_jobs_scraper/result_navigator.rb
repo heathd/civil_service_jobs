@@ -54,7 +54,8 @@ class CivilServiceJobsScraper::ResultNavigator
     skipped = enqueued = fetched = complete = 0
 
     result_page.job_list.each do |job_teaser|
-      if results_store.exists?(job_teaser) || results_store.should_skip?(job_teaser)
+      job = CivilServiceJobsScraper::Model::Job.from_scrape(job_teaser)
+      if results_store.exists?(job) || results_store.should_skip?(job)
         status_display.increment(:skip, result_page.current_page)
         skipped += 1
         next
