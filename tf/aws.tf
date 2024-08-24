@@ -182,6 +182,7 @@ data "aws_iam_policy_document" "allow_write_to_civil_service_jobs_dynamodb_table
     effect = "Allow"
 
     actions = [
+      "dynamodb:DescribeTable",
       "dynamodb:PutItem",
       "dynamodb:UpdateItem",
       "dynamodb:GetItem", 
