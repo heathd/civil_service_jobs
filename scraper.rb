@@ -49,6 +49,7 @@ STATUS.clear_screen
 
 def scrape(options)
   agent = Mechanize.new
+  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Scrape start").save!
   start_page = agent.get("https://www.civilservicejobs.service.gov.uk/csr/index.cgi")
   first_result_page = CivilServiceJobsScraper::Page::ResultPage.new(
     start_page.form_with(id: "ID_context_search_form").submit)
@@ -63,6 +64,11 @@ def scrape(options)
   n.mark_complete_and_traverse_from(first_result_page)
 
   n.wait_for_completion
+
+  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(
+    operation: "Scrape complete",
+    message: STATUS.completion_message).save!
+
   sleep(15)
 end
 

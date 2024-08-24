@@ -2,7 +2,7 @@ require 'tty-cursor'
 require 'tty-progressbar'
 
 class CivilServiceJobsScraper::TtyStatusDisplay
-  attr_reader :num_threads
+  attr_reader :num_threads, :counters
 
   def initialize(num_threads:)
     @num_threads = num_threads
@@ -78,4 +78,10 @@ class CivilServiceJobsScraper::TtyStatusDisplay
     end
   end
 
+  def completion_message
+    [
+      "#{@counters[:complete]} jobs downloaded and added to the database. ",
+      "#{@counters[:skip]} jobs skipped because they have already been downloaded. "
+    ].join("")
+  end
 end
