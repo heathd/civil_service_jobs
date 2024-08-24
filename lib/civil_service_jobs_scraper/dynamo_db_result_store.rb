@@ -141,7 +141,6 @@ class CivilServiceJobsScraper::DynamoDbResultStore
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).void}
   def add(job)
-    puts "adding #{job.refcode}"
     @download_counter += 1
 
     main_record = JobMainRecord.find(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE) ||
