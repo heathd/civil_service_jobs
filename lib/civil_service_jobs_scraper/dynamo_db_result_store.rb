@@ -11,7 +11,7 @@ class CivilServiceJobsScraper::DynamoDbResultStore
   class ActivityRecord
     include Aws::Record
 
-    set_table_name "activity"
+    set_table_name "civil_service_jobs_activity"
 
     string_attr :id, hash_key: true, default_value: lambda { SecureRandom.uuid }
     datetime_attr :created_at, default_value: lambda { DateTime.now }
@@ -36,7 +36,7 @@ class CivilServiceJobsScraper::DynamoDbResultStore
   class JobRecordBase
     include Aws::Record
 
-    set_table_name "jobs"
+    set_table_name "civil_service_jobs"
 
     string_attr :refcode, hash_key: true
     string_attr :record_type, range_key: true
