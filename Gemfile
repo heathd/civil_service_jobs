@@ -18,4 +18,7 @@ gem "aws-record"
 
 group :development do
   gem "foreman"
+  gem 'sorbet-runtime'
+  gem 'sorbet'
+  gem 'tapioca', require: false
 end
