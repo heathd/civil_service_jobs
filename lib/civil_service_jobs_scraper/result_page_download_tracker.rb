@@ -39,6 +39,13 @@ class CivilServiceJobsScraper::ResultPageDownloadTracker
     end
   end
 
+  def expanded!(result_page)
+    page_number = result_page.current_page
+    @page_status_mutex.synchronize do
+      @page_status_map[page_number] = :expanded
+    end
+  end
+
   def skipped!(page_number)
     status_display.result_page(page_number, "skipped")
 
@@ -53,6 +60,16 @@ class CivilServiceJobsScraper::ResultPageDownloadTracker
         false
       else
         @page_status_map.all? {|k,v| %I{downloaded skipped}.include?(v)}
+      end
+    end
+  end
+
+  def all_expanded?
+    @page_status_mutex.synchronize do
+      if @last_page.nil?
+        false
+      else
+        @page_status_map.all? {|k,v| %I{expanded skipped}.include?(v)}
       end
     end
   end

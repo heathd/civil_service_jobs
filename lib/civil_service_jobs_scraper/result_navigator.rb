@@ -29,6 +29,7 @@ class CivilServiceJobsScraper::ResultNavigator
   def mark_complete_and_traverse_from(result_page)
     result_page_download_tracker.downloaded!(result_page)
     enqueue_job_detail_fetchers!(result_page)
+    result_page_download_tracker.expanded!(result_page)
 
     pages = result_page.pagination_links
     pages.each do |page_number, url|
@@ -79,13 +80,13 @@ class CivilServiceJobsScraper::ResultNavigator
       }
     end
 
-    status_display.result_page(result_page.current_page, "expanded ")
+    status_display.result_page(result_page.current_page, "expanded")
   end
 
   sig { void }
   def wait_for_completion
     worker_pool.wait_for_empty_and {
-      result_page_download_tracker.all_downloaded?
+      result_page_download_tracker.all_expanded?
     }
   end
 end

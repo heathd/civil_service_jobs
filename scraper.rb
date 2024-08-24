@@ -65,11 +65,14 @@ def scrape(options)
 
   n.wait_for_completion
 
+  sleep(15)
+
+  puts "---== Scrape complete ==---"
+  puts STATUS.completion_message
+
   CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(
     operation: "Scrape complete",
     message: STATUS.completion_message).save!
-
-  sleep(15)
 end
 
 scrape(options)

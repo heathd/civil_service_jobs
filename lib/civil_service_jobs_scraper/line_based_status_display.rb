@@ -24,32 +24,41 @@ class CivilServiceJobsScraper::LineBasedStatusDisplay
       @counters[counter_name] ||= 0
       @counters[counter_name] += 1
 
-      puts @counters.map {|name, value| "#{name}: #{value}"}.join(" ")
+      overall_counter_msg = @counters.map {|name, value| "#{name}: #{value}"}.join(" ")
+      puts "                                            all: #{overall_counter_msg}"
 
       if page_number
         @per_page_counters[page_number] ||= {}
         @per_page_counters[page_number][counter_name] ||= 0
         @per_page_counters[page_number][counter_name] += 1
 
-        puts "#{page_number}: #{@page_statuses[page_number]} "
-        puts @per_page_counters[page_number].map {|name, value| "#{page_number}: #{name}: #{value}"}.join(" ")
+        # puts "P#{page_number} <#{@page_statuses[page_number]}>: (#{per_page_counters_message(page_number)})"
       end
     end
   end
 
+  def per_page_counters_message(page_number)
+    counters = @per_page_counters[page_number] || []
+    counters.map do |name, value|
+      "#{name}: #{value}"
+    end.join(" ")
+  end
+
   def start_waiting_for_empty(total)
     @mutex.synchronize do
+      puts "Starting to wait for work queues to empty..."
     end
   end
 
   def wait_for_empty(current)
     @mutex.synchronize do
+      puts "Waiting for work queues to empty..."
     end
   end
 
   def result_page(page_number, status)
     @mutex.synchronize do
-      puts "#{page_number}: #{status}"
+      puts "P#{page_number} <#{status}>: (#{per_page_counters_message(page_number)})"
       @page_statuses[page_number] = status
     end
   end
