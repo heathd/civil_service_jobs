@@ -56,8 +56,8 @@ class CivilServiceJobsScraper::LineBasedStatusDisplay
 
   def completion_message
     [
-      "#{@counters[:complete]} jobs downloaded and added to the database. ",
-      "#{@counters[:skip]} jobs skipped because they have already been downloaded. "
+      "#{@counters[:complete] || 0} jobs downloaded and added to the database. ",
+      "#{@counters[:skip] || 0} jobs skipped because they have already been downloaded. "
     ].join("")
   end
 
