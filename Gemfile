@@ -4,7 +4,7 @@
 
 source "https://rubygems.org"
 
-ruby File.read("./.ruby-version")
+ruby File.read(File.dirname(__FILE__) + "/.ruby-version")
 
 gem "sqlite_magic"
 gem "mechanize"
@@ -14,3 +14,8 @@ gem "tty-progressbar"
 gem "zeitwerk"
 gem "rspec"
 gem "aws-sdk-s3"
+gem "aws-record"
+
+group :development do
+  gem "foreman"
+end

@@ -13,6 +13,12 @@ class CivilServiceJobsScraper::ResultStore
     @download_counter = 0
   end
 
+  def each(&block)
+    @db.execute("SELECT * FROM data").each do |row|
+      yield(row)
+    end
+  end
+
   def exists?(job)
     @db.execute("select * from data where refcode=:refcode", job.refcode).any?
   end
@@ -29,4 +35,3 @@ class CivilServiceJobsScraper::ResultStore
     @db.save_data([:refcode], fields, 'data')
   end
 end
-
