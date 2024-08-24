@@ -7,12 +7,13 @@ RSpec.describe CivilServiceJobsScraper::DynamoDbResultStore do
 
   before(:each) do
     begin
-      CivilServiceJobsScraper::DynamoDbResultStore::JobRecord.configure_client(
+      dynamo_db_client = Aws::DynamoDB::Client.new(
         region: "localhost",
-        access_key_id: "foo",
-        secret_access_key: "bar",
-        endpoint: "http://localhost:8000"
+        endpoint: "http://localhost:#{@db.port}",
+        credentials: Aws::Credentials.new('foo', 'bar')
       )
+
+      CivilServiceJobsScraper::DynamoDbResultStore.configure_client(dynamo_db_client)
       CivilServiceJobsScraper::DynamoDbResultStore.ensure_table_exists!
       CivilServiceJobsScraper::DynamoDbResultStore.delete_all!
     rescue Aws::DynamoDB::Errors::ResourceNotFoundException
@@ -21,15 +22,19 @@ RSpec.describe CivilServiceJobsScraper::DynamoDbResultStore do
 
   subject(:rs) { described_class.new }
   it "can create a job with a given refcode" do
-    rs.add({"refcode"=> "foo"})
+    job = CivilServiceJobsScraper::Model::Job.new({"refcode"=> "foo"})
+    rs.add(job)
     all = rs.each.to_a
     expect(all.size).to eq(1)
     expect(all[0].refcode).to eq("foo")
   end
 
   it "updates a job if added twice" do
-    rs.add({"refcode"=> "foo", "title"=> "Small Cheese"})
-    rs.add({"refcode"=> "foo", "title"=> "Big Cheese"})
+    job1 = CivilServiceJobsScraper::Model::Job.new({"refcode"=> "foo", "title"=> "Small Cheese"})
+    job2 = CivilServiceJobsScraper::Model::Job.new({"refcode"=> "foo", "title"=> "Big Cheese"})
+
+    rs.add(job1)
+    rs.add(job2)
     all = rs.each.to_a
     expect(all.size).to eq(1)
     expect(all.first.title).to eq("Big Cheese")
@@ -41,7 +46,8 @@ RSpec.describe CivilServiceJobsScraper::DynamoDbResultStore do
   end
 
   it "stores extra attributes of a job outside of the core fields" do
-    rs.add("refcode"=> "foo", "title"=> "Small Cheese", "extra_field" => "value")
+    job = CivilServiceJobsScraper::Model::Job.new("refcode"=> "foo", "title"=> "Small Cheese", "extra_field" => "value")
+    rs.add(job)
     expect(rs.find("foo").extra_fields).to eq({"extra_field" => "value"})
   end
 

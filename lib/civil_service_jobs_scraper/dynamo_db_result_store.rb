@@ -3,9 +3,25 @@
 require "aws-record"
 require 'date'
 require 'time'
+require 'securerandom'
 
 class CivilServiceJobsScraper::DynamoDbResultStore
   extend T::Sig
+
+  class ActivityRecord
+    include Aws::Record
+
+    set_table_name "activity"
+
+    string_attr :id, hash_key: true, default_value: lambda { SecureRandom.uuid }
+    datetime_attr :created_at, default_value: lambda { DateTime.now }
+    string_attr :operation
+    string_attr :message
+
+    def self.find_operations(type)
+      self.scan(filter_expression: "")
+    end
+  end
 
   class JobRecord
     include Aws::Record
@@ -35,14 +51,41 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     map_attr :extra_fields
   end
 
+  def self.configure_client(client)
+    CivilServiceJobsScraper::DynamoDbResultStore::JobRecord.configure_client(client: client)
+    CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.configure_client(client: client)
+  end
+
   def self.ensure_table_exists!
-    return if JobRecord.table_exists?
+    Aws::Record::TableMigration.new(CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord).create!({
+      billing_mode: "PAY_PER_REQUEST"
+    }) unless ActivityRecord.table_exists?
+
     Aws::Record::TableMigration.new(CivilServiceJobsScraper::DynamoDbResultStore::JobRecord).create!({
       billing_mode: "PAY_PER_REQUEST"
-    })
+    }) unless JobRecord.table_exists?
   end
 
   def self.delete_all!
+    delete_jobs!
+    delete_activity_records!
+  end
+
+  def self.delete_activity_records!
+    all_activity_records = ActivityRecord.scan()
+    return if all_activity_records.empty?
+
+    operation = Aws::Record::Batch.write(client: ActivityRecord.dynamodb_client) do |db|
+      all_activity_records.each do |r|
+        db.delete(r)
+      end
+    end
+
+    # unprocessed items can be retried by calling Aws::Record::BatchWrite#execute!
+    operation.execute! until operation.complete?
+  end
+
+  def self.delete_jobs!
     all_jobs = JobRecord.scan(projection_expression: "refcode")
     return if all_jobs.empty?
 
@@ -93,12 +136,12 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     normalised
   end
 
-  sig {params(refcode: String).void}
+  sig {params(refcode: String).returns(JobRecord)}
   def find(refcode)
     JobRecord.find(refcode: refcode)
   end
 
-  sig {params(block: T.proc.params(arg0: JobRecord).void).void}
+  sig {params(block: T.nilable(T.proc.params(arg0: JobRecord).void)).returns(Enumerable)}
   def each(&block)
     JobRecord.scan.each(&block)
   end
