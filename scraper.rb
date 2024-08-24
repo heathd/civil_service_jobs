@@ -75,23 +75,36 @@ end
 def transfer(options)
   results_store = CivilServiceJobsScraper::ResultStore.new(db_file: options[:db_file], limit: options[:limit_jobs])
   dynamodb_store = CivilServiceJobsScraper::DynamoDbResultStore.new()
-  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Start transfer").save!
+  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Start transfer #{options[:db_file]}").save!
+
+  puts "Querying dynamodb..."
+  puts "There are #{dynamodb_store.all_existing_jobs.size} jobs in dynamodb"
 
   count = results_store.count
+  slices = 0
   i = 0
-  results_store.each do |sqlite_job_record|
-    if i % 1000 == 0
-      puts "\n#{i} of #{count}"
-    elsif i % 100 == 0
-      print "."
+
+  not_stored = results_store.all
+    .map { |sqlite_job_record| CivilServiceJobsScraper::Model::Job.from_sqlite_record(sqlite_job_record) }
+    .reject { |job| dynamodb_store.job_already_stored?(job.refcode) }
+
+  puts "Had #{count} jobs to load"
+  puts "#{not_stored.size} of those have not been stored in dynamodb yet"
+
+  not_stored
+    .each_slice(12) do |batch|
+      if slices % 100 == 0
+        puts "\n#{i} of #{count}"
+      elsif slices % 10 == 0
+        print "."
+      end
+
+      dynamodb_store.add_batch(batch)
+      slices += 1
+      i += batch.size
     end
 
-    job = CivilServiceJobsScraper::Model::Job.from_sqlite_record(sqlite_job_record)
-    dynamodb_store.add(job)
-    i+=1
-  end
-
-  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Complete transfer", message: "#{count} records transferred").save!
+  CivilServiceJobsScraper::DynamoDbResultStore::ActivityRecord.new(operation: "Complete transfer of local data #{options[:db_file]}", message: "#{i} of #{count} records transferred").save!
 end
 
 def count(options)

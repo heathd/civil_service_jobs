@@ -139,18 +139,51 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     @download_counter = 0
   end
 
+  def all_existing_jobs
+    @all_existing_jobs ||= JobMainRecord.scan(projection_expression: "refcode").map(&:refcode)
+  end
+
+  def job_already_stored?(refcode)
+    all_existing_jobs.include?(refcode)
+  end
+
+  sig {params(jobs: T::Array[CivilServiceJobsScraper::Model::Job]).void}
+  def add_batch(jobs)
+    raise "Too many jobs in batch (#{jobs.size})" if jobs.size > 12
+    operation = Aws::Record::Batch.write(client: JobMainRecord.dynamodb_client) do |db|
+      jobs.each do |job|
+        main_record = JobMainRecord.new(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
+        main_attrs = slice_attributes(job, JobMainRecord.attributes.attributes.keys)
+        main_record.assign_attributes(main_attrs)
+        db.put(main_record)
+
+        body_record = JobBodyRecord.new(record_type: JobBodyRecord::RECORD_TYPE)
+        body_attrs = slice_attributes(job, JobBodyRecord.attributes.attributes.keys)
+        body_record.assign_attributes(body_attrs)
+        db.put(body_record)
+      end
+    end
+
+    operation.execute! until operation.complete?
+  end
+
+
   sig {params(job: CivilServiceJobsScraper::Model::Job).void}
   def add(job)
     @download_counter += 1
 
-    main_record = JobMainRecord.find(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE) ||
-      JobMainRecord.new(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
+    if job_already_stored?
+      main_record = JobMainRecord.find(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
+      body_record = JobBodyRecord.find(refcode: job.refcode, record_type: JobBodyRecord::RECORD_TYPE)
+      extra_record = JobExtraFieldsRecord.find(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE)
+    end
+
+    main_record ||= JobMainRecord.new(refcode: job.refcode, record_type: JobMainRecord::RECORD_TYPE)
     main_attrs = slice_attributes(job, JobMainRecord.attributes.attributes.keys)
     main_record.assign_attributes(main_attrs)
     main_record.save!
 
-    body_record = JobBodyRecord.find(refcode: job.refcode, record_type: JobBodyRecord::RECORD_TYPE) ||
-      JobBodyRecord.new(record_type: JobBodyRecord::RECORD_TYPE)
+    body_record ||= JobBodyRecord.new(record_type: JobBodyRecord::RECORD_TYPE)
     body_attrs = slice_attributes(job, JobBodyRecord.attributes.attributes.keys)
     body_record.assign_attributes(body_attrs)
     body_record.save!
@@ -158,8 +191,7 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     remaining_keys = job.attributes.keys.map(&:to_sym) - main_attrs.keys - body_attrs.keys
     extra_fields = slice_attributes(job, remaining_keys)
     if extra_fields.any?
-      extra_record = JobExtraFieldsRecord.find(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE) ||
-        JobExtraFieldsRecord.new(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE)
+      extra_record ||= JobExtraFieldsRecord.new(refcode: job.refcode, record_type: JobExtraFieldsRecord::RECORD_TYPE)
       extra_record.extra_fields = extra_fields
       extra_record.save!
     end
