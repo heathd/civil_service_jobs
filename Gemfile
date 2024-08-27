@@ -15,6 +15,8 @@ gem "zeitwerk"
 gem "rspec"
 gem "aws-sdk-s3"
 gem "aws-record"
+gem "googleauth"
+gem "google-apis-sheets_v4"
 
 group :development do
   gem "foreman"
