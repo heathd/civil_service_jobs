@@ -11,6 +11,7 @@ require 'google/apis/sheets_v4'
 require 'date'
 require 'time'
 require 'tzinfo'
+require "reverse_markdown"
 
 class GoogleSheet
   attr_reader :authorizer, :spreadsheet_id, :logger
@@ -96,9 +97,13 @@ def generate_google_datetime(datetime)
   (integer_part + fractional_part).to_f
 end
 
+def html_to_markdown(html)
+  ReverseMarkdown.convert(html)
+end
+
 sig {params(
   job: CivilServiceJobsScraper::DynamoDbResultStore::JobMainRecord,
-  body: CivilServiceJobsScraper::DynamoDbResultStore::JobBodyRecord
+  body: T.nilable(CivilServiceJobsScraper::DynamoDbResultStore::JobBodyRecord)
   ).returns(T::Array[String])}
 def spreadsheet_row_for_job(job, body)
   tz = TZInfo::Timezone.get("Europe/London")
@@ -124,7 +129,7 @@ def spreadsheet_row_for_job(job, body)
     job.type_of_role,
     job.working_pattern,
     job.length_of_employment,
-    body && body.body
+    html_to_markdown(body && body.body)
   ]
 end
 

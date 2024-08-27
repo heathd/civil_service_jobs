@@ -20,3 +20,4 @@ require "zeitwerk"
 require 'googleauth'
 require 'google/apis/sheets_v4'
 require 'tzinfo'
+require 'reverse_markdown'

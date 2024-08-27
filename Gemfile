@@ -19,6 +19,7 @@ gem "googleauth"
 gem "google-apis-sheets_v4"
 gem "tzinfo"
 gem "tzinfo-data"
+gem "reverse_markdown"
 
 group :development do
   gem "foreman"
