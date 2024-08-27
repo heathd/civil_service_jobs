@@ -1,0 +1,140 @@
+#!/usr/bin/env ruby
+
+#typed: true
+
+$LOAD_PATH << File.dirname(__FILE__) + "/../config/"
+require 'init'
+
+require 'logger'
+require 'googleauth'
+require 'google/apis/sheets_v4'
+require 'date'
+require 'time'
+require 'tzinfo'
+
+class GoogleSheet
+  attr_reader :authorizer, :spreadsheet_id, :logger
+
+  def initialize(spreadsheet_id:, logger: Logger.new(nil))
+    authorize!
+    @spreadsheet_id = spreadsheet_id
+    @logger = logger
+  end
+
+  def authorize!
+    if %W{GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY}.all? {|env_var| ENV.has_key?(env_var) }
+      # ok can use these env vars
+      @authorizer = Google::Auth::ServiceAccountCredentials.make_creds(
+        scope: 'https://www.googleapis.com/auth/spreadsheets'
+      )
+    elsif ENV.has_key?("GOOGLE_CLOUD_CREDS")
+      @authorizer = Google::Auth::ServiceAccountCredentials.make_creds(
+        json_key_io: StringIO.new(ENV.fetch("GOOGLE_CLOUD_CREDS")),
+        scope: 'https://www.googleapis.com/auth/spreadsheets'
+      )
+    else
+      raise "Must pass credentials in ENV, either:
+        - GOOGLE_CLOUD_CREDS containing the full JSON credentials structure downloaded from google cloud
+        - or GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY containing these credentials"
+    end
+  end
+
+  def sheets_service
+    @sheets_service ||= begin
+      service = Google::Apis::SheetsV4::SheetsService.new
+      service.authorization = authorizer
+      service
+    end
+  end
+
+  def append_to_table(table_range, values)
+    value_range_object = Google::Apis::SheetsV4::ValueRange.new(
+      range: table_range,
+      major_dimension: 'ROWS',
+      values: values
+    )
+
+    response = sheets_service.append_spreadsheet_value(
+      spreadsheet_id,
+      table_range,
+      value_range_object,
+      value_input_option: 'RAW'
+    )
+
+    logger.info "#{response.updates.updated_cells} cells updated."
+  rescue Google::Apis::Error => e
+    logger.error(e)
+  end
+end
+
+def random_fruit
+  [
+  'Apple', 'Banana', 'Cherry', 'Date', 'Elderberry', 'Fig', 'Grape', 'Honeydew',
+  'Kiwi', 'Lemon', 'Mango', 'Nectarine', 'Orange', 'Papaya', 'Quince', 'Raspberry',
+  'Strawberry', 'Tangerine', 'Ugli fruit', 'Watermelon', 'Xigua', 'Yellow Passion Fruit', 'Zucchini'
+  ].sample
+end
+
+def random_values
+  [
+    [random_fruit, random_fruit, random_fruit, random_fruit],
+    [random_fruit, random_fruit, random_fruit, random_fruit]
+  ]
+end
+
+extend T::Sig
+
+sig{params(datetime: TZInfo::DateTimeWithOffset).returns(Numeric)}
+def generate_google_datetime(datetime)
+	#	The integer part represents the number of days since December 30, 1899. For example, 1 represents December 31, 1899, 2 represents January 1, 1900, and so on.
+	#	The fractional part represents the fraction of the day. For example, 0.5 represents 12:00 PM (noon), 0.75 represents 6:00 PM, and so on.
+  reference_date = Date.new(1899,12,30)
+  integer_part = datetime.to_date - reference_date
+
+  fractional_part = datetime.hour/24r + datetime.minute/(24*60r) + datetime.second/(24*60*60r)
+
+  (integer_part + fractional_part).to_f
+end
+
+sig {params(
+  job: CivilServiceJobsScraper::DynamoDbResultStore::JobMainRecord,
+  body: CivilServiceJobsScraper::DynamoDbResultStore::JobBodyRecord
+  ).returns(T::Array[String])}
+def spreadsheet_row_for_job(job, body)
+  tz = TZInfo::Timezone.get("Europe/London")
+
+  [
+    generate_google_datetime(tz.to_local(job.created_at)),
+    tz.to_local(job.created_at).strftime('%Z'),
+    job.refcode,
+    job.title,
+    job.department,
+    job.location,
+    job.salary,
+    job.closingdate,
+    job.grade,
+    job.stage,
+    job.reference_number,
+    job.job_grade,
+    job.number_of_jobs_available,
+    job.job_grade_0,
+    job.job_grade_1,
+    job.contract_type,
+    job.business_area,
+    job.type_of_role,
+    job.working_pattern,
+    job.length_of_employment,
+    body && body.body
+  ]
+end
+
+LOGGER = Logger.new($stdout)
+sheet = GoogleSheet.new(spreadsheet_id: '1qXl4o0aKL3kAbDpoNJD8XeAFjMXIWjCXTWK-PWDL-DM', logger: LOGGER)
+# sheet.append_to_table('Sheet1!A1', random_values)
+
+store = CivilServiceJobsScraper::DynamoDbResultStore.new
+store.each.take(1).each.with_index do |job, i|
+  LOGGER.info "#{i}: #{job.title} (#{job.created_at})"
+  row = spreadsheet_row_for_job(job, job.body_record)
+  sheet.append_to_table('Sheet1!A1', [row])
+end

@@ -66,6 +66,10 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     string_attr :working_pattern
     string_attr :length_of_employment
     datetime_attr :created_at, default_value: lambda { DateTime.now }
+
+    def body_record
+      JobBodyRecord.find(refcode: self.refcode, record_type: JobBodyRecord::RECORD_TYPE)
+    end
   end
 
 
@@ -239,9 +243,9 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     CivilServiceJobsScraper::Model::Job.new(attrs)
   end
 
-  sig {params(block: T.nilable(T.proc.params(arg0: JobMainRecord).void)).returns(Enumerable)}
+  sig {params(block: T.nilable(T.proc.params(arg0: JobMainRecord).void)).returns(Enumerator)}
   def each(&block)
-    JobMainRecord.scan(
+    opts = {
       filter_expression: "#T = :record_type",
       expression_attribute_names: {
         "#T" => "record_type",
@@ -249,7 +253,8 @@ class CivilServiceJobsScraper::DynamoDbResultStore
       expression_attribute_values: {
         ":record_type" => JobMainRecord::RECORD_TYPE
       }
-    ).each(&block)
+    }
+    JobMainRecord.scan(opts).each(&block)
   end
 
   sig {params(job: CivilServiceJobsScraper::Model::Job).returns(T::Boolean)}

@@ -17,6 +17,8 @@ gem "aws-sdk-s3"
 gem "aws-record"
 gem "googleauth"
 gem "google-apis-sheets_v4"
+gem "tzinfo"
+gem "tzinfo-data"
 
 group :development do
   gem "foreman"

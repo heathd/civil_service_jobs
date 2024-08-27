@@ -19,3 +19,4 @@ require "tty-progressbar"
 require "zeitwerk"
 require 'googleauth'
 require 'google/apis/sheets_v4'
+require 'tzinfo'
