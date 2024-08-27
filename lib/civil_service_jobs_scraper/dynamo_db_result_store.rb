@@ -139,12 +139,12 @@ class CivilServiceJobsScraper::DynamoDbResultStore
     @download_counter = 0
   end
 
-  def all_existing_jobs
-    @all_existing_jobs ||= JobMainRecord.scan(projection_expression: "refcode").map(&:refcode)
+  def all_existing_refcodes
+    @all_existing_refcodes ||= JobMainRecord.scan(projection_expression: "refcode").map(&:refcode)
   end
 
   def job_already_stored?(refcode)
-    all_existing_jobs.include?(refcode)
+    all_existing_refcodes.include?(refcode)
   end
 
   sig {params(jobs: T::Array[CivilServiceJobsScraper::Model::Job]).void}
