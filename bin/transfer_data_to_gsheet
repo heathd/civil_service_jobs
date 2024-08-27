@@ -61,26 +61,16 @@ class GoogleSheet
       value_range_object,
       value_input_option: 'RAW'
     )
-
-    logger.info "#{response.updates.updated_cells} cells updated."
   rescue Google::Apis::Error => e
     logger.error(e)
   end
-end
 
-def random_fruit
-  [
-  'Apple', 'Banana', 'Cherry', 'Date', 'Elderberry', 'Fig', 'Grape', 'Honeydew',
-  'Kiwi', 'Lemon', 'Mango', 'Nectarine', 'Orange', 'Papaya', 'Quince', 'Raspberry',
-  'Strawberry', 'Tangerine', 'Ugli fruit', 'Watermelon', 'Xigua', 'Yellow Passion Fruit', 'Zucchini'
-  ].sample
-end
-
-def random_values
-  [
-    [random_fruit, random_fruit, random_fruit, random_fruit],
-    [random_fruit, random_fruit, random_fruit, random_fruit]
-  ]
+  def refcodes_of_jobs_already_in_sheet
+    @refcodes_of_jobs_already_in_sheet ||= begin
+      response = sheets_service.get_spreadsheet_values(spreadsheet_id, 'Sheet1!C:C')
+      response.values[1..-1].reject(&:empty?).map {|row| row.first}
+    end
+  end
 end
 
 extend T::Sig
@@ -97,8 +87,9 @@ def generate_google_datetime(datetime)
   (integer_part + fractional_part).to_f
 end
 
+sig {params(html: T.nilable(String)).returns(String)}
 def html_to_markdown(html)
-  ReverseMarkdown.convert(html)
+  ReverseMarkdown.convert(html || "")
 end
 
 sig {params(
@@ -134,12 +125,16 @@ def spreadsheet_row_for_job(job, body)
 end
 
 LOGGER = Logger.new($stdout)
+$stdout.sync = true
 sheet = GoogleSheet.new(spreadsheet_id: '1qXl4o0aKL3kAbDpoNJD8XeAFjMXIWjCXTWK-PWDL-DM', logger: LOGGER)
-# sheet.append_to_table('Sheet1!A1', random_values)
 
 store = CivilServiceJobsScraper::DynamoDbResultStore.new
-store.each.take(1).each.with_index do |job, i|
-  LOGGER.info "#{i}: #{job.title} (#{job.created_at})"
-  row = spreadsheet_row_for_job(job, job.body_record)
-  sheet.append_to_table('Sheet1!A1', [row])
+store.each.take(40).each.with_index do |job, i|
+  if sheet.refcodes_of_jobs_already_in_sheet.include?(job.refcode)
+    LOGGER.info "#{i}: #{job.refcode} #{job.title} -- already in sheet"
+  else
+    LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
+    row = spreadsheet_row_for_job(job, job.body_record)
+    sheet.append_to_table('Sheet1!A1', [row])
+  end
 end
