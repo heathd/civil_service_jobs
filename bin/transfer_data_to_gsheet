@@ -193,7 +193,7 @@ class GoogleSheet
   end
 
   def max_rows_per_batch_sheet
-    1000
+    2000
   end
 
   def next_batch_sheet
