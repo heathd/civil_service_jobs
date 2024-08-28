@@ -8,38 +8,57 @@ require 'init'
 require 'logger'
 require 'googleauth'
 require 'google/apis/sheets_v4'
+require 'google/apis/drive_v3'
 require 'date'
 require 'time'
 require 'tzinfo'
 require "reverse_markdown"
 
-class GoogleSheet
-  attr_reader :authorizer, :spreadsheet_id, :logger, :table_range, :rows
+class BatchSheet < T::Struct
+  const :id, String
+  const :name, String
+  prop :rows, Integer
+end
 
-  def initialize(spreadsheet_id:, table_range:, logger: Logger.new(nil))
+class GoogleSheet
+  attr_reader :authorizer, :folder_id, :logger, :rows
+
+  def initialize(folder_id:, logger: Logger.new(nil))
     authorize!
-    @spreadsheet_id = spreadsheet_id
-    @table_range = table_range
+    @folder_id = folder_id
     @logger = logger
     @rows = []
+    @batch_sheets = nil
   end
 
   def authorize!
-    if %W{GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY}.all? {|env_var| ENV.has_key?(env_var) }
-      # ok can use these env vars
-      @authorizer = Google::Auth::ServiceAccountCredentials.make_creds(
-        scope: 'https://www.googleapis.com/auth/spreadsheets'
-      )
-    elsif ENV.has_key?("GOOGLE_CLOUD_CREDS")
-      @authorizer = Google::Auth::ServiceAccountCredentials.make_creds(
-        json_key_io: StringIO.new(ENV.fetch("GOOGLE_CLOUD_CREDS")),
-        scope: 'https://www.googleapis.com/auth/spreadsheets'
-      )
-    else
+    raise_if_invalid_creds!
+
+    opts = {
+      scope: [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+      ]
+    }
+
+    if ENV.has_key?("GOOGLE_CLOUD_CREDS")
+      opts.merge!(json_key_io: StringIO.new(ENV.fetch("GOOGLE_CLOUD_CREDS")))
+    end
+
+    @authorizer = Google::Auth::ServiceAccountCredentials.make_creds(opts)
+  end
+
+  def raise_if_invalid_creds!
+    unless valid_creds?
       raise "Must pass credentials in ENV, either:
         - GOOGLE_CLOUD_CREDS containing the full JSON credentials structure downloaded from google cloud
         - or GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY containing these credentials"
     end
+  end
+
+  def valid_creds?
+    ENV.has_key?("GOOGLE_CLOUD_CREDS") or
+      %W{GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY}.all? {|env_var| ENV.has_key?(env_var) }
   end
 
   def sheets_service
@@ -50,32 +69,55 @@ class GoogleSheet
     end
   end
 
+  def drive_service
+    @drive_service ||= begin
+      service = Google::Apis::DriveV3::DriveService.new
+      service.authorization = authorizer
+      service
+    end
+  end
+
   def flush!
+    n = next_batch_sheet
+
+    logger.info "Appending #{rows.size} rows to refcode sheet"
+    flush_data_to_sheet(refcode_spreadsheet_id, 'Sheet1!A1', rows.map {|row| row[0..2] + [n.name]})
+    logger.info "Successfully appended #{rows.size} rows"
+
+    logger.info "Appending #{rows.size} rows to '#{n.name}' (id='#{n.id}')"
+    flush_data_to_sheet(n.id, 'Sheet1!A1', rows)
+    logger.info "Successfully appended #{rows.size} rows to '#{n.name}' (id='#{n.id}')"
+    n.rows += rows.size
+    @rows = []
+  end
+
+  def flush_data_to_sheet(spreadsheet_id, table_range, rows)
     value_range_object = Google::Apis::SheetsV4::ValueRange.new(
       range: table_range,
       major_dimension: 'ROWS',
       values: rows
     )
 
-    sent = T.let(false, T::Boolean)
-    tries = 0
     response = T.let(nil, T.nilable(Google::Apis::SheetsV4::AppendValuesResponse))
 
-    logger.info "Appending #{rows.size} rows to sheet"
-    while !sent
+    with_retries do
+      response = sheets_service.append_spreadsheet_value(
+        spreadsheet_id,
+        table_range,
+        value_range_object,
+        value_input_option: 'RAW'
+      )
+      response
+    end
+  end
+
+  def with_retries(&block)
+    tries = 0
+
+    catch :success do
       begin
         tries += 1
-
-        response = sheets_service.append_spreadsheet_value(
-          spreadsheet_id,
-          table_range,
-          value_range_object,
-          value_input_option: 'RAW'
-        )
-        sent = true
-        logger.info "Successfully appended #{rows.size} rows to sheet"
-        @rows = []
-        response
+        throw :success, block.call
       rescue Google::Apis::RateLimitError => e
         if tries < 20
           sleep_time = tries^2 / 2
@@ -86,6 +128,33 @@ class GoogleSheet
         end
       end
     end
+  end
+
+  def set_row_height(spreadsheet_id, pixel_height = 21, sheet_id = "Sheet1")
+    # Create the request to update row height
+    requests = [
+      {
+        update_dimension_properties: {
+          range: {
+            sheet_id: sheet_id,
+            dimension: 'ROWS',
+            start_index: 1
+            # end_index: 2000 -- unbounded if unspecified?
+          },
+          properties: {
+            pixel_size: pixel_height
+          },
+          fields: 'pixelSize'
+        }
+      }
+    ]
+
+    # Create the batch update request
+    batch_update_request = Google::Apis::SheetsV4::BatchUpdateSpreadsheetRequest.new(
+      requests: requests
+    )
+
+    with_retries { sheets_service.batch_update_spreadsheet(spreadsheet_id, batch_update_request) }
   end
 
   def approx_batch_size_in_bytes
@@ -101,11 +170,101 @@ class GoogleSheet
     end
   end
 
+  def refcode_spreadsheet_id
+    @refcode_spreadsheet_id ||= begin
+      found = find_sheets_by_name(folder_id, "Refcodes")
+      if found.any?
+        found.first
+      else
+        create_spreadsheet("Refcodes")
+      end
+    end
+  end
+
+  def batch_sheets
+    @batch_sheets ||= begin
+      found = find_sheets_containing_word_in_name(folder_id, "Batch")
+      found.inject({}) do |memo, file|
+        memo.merge(
+          file.name => BatchSheet.new(id: file.id, rows: count_refcodes_in_sheet(file.id), name: file.name)
+        )
+      end
+    end
+  end
+
+  def max_rows_per_batch_sheet
+    1000
+  end
+
+  def next_batch_sheet
+    found = batch_sheets.find do |name, batch_sheet|
+      batch_sheet.rows < max_rows_per_batch_sheet
+    end
+
+    if found
+      found.last
+    else
+      name = "Batch #{batch_sheets.size + 1}"
+      created = BatchSheet.new(id: create_spreadsheet(name), rows: 0, name: name)
+      @batch_sheets[name] = created
+      created
+    end
+  end
+
+  def count_refcodes_in_sheet(sheet_id)
+    response = with_retries { sheets_service.get_spreadsheet_values(sheet_id, 'Sheet1!C:C') }
+    if response.values
+      response.values[1..-1].reject(&:empty?).size
+    else
+      0
+    end
+  end
+
   def refcodes_of_jobs_already_in_sheet
     @refcodes_of_jobs_already_in_sheet ||= begin
-      response = sheets_service.get_spreadsheet_values(spreadsheet_id, 'Sheet1!C:C')
-      response.values[1..-1].reject(&:empty?).map {|row| row.first}
+      response = with_retries { sheets_service.get_spreadsheet_values(refcode_spreadsheet_id, 'Sheet1!C:C') }
+      if response.values
+        response.values[1..-1].reject(&:empty?).map {|row| row.first}
+      else
+        []
+      end
     end
+  end
+
+  sig {params(name: String).returns(String)}
+  def create_spreadsheet(name)
+    created_spreadsheet = sheets_service.create_spreadsheet(
+      Google::Apis::SheetsV4::Spreadsheet.new(
+        properties: {
+          title: name
+        }
+      )
+    )
+
+    r = drive_service.update_file(
+      created_spreadsheet.spreadsheet_id,
+      add_parents: folder_id,
+      fields: 'id, parents'
+    )
+    r.id
+  end
+
+  sig {params(folder_id: String, sheet_name: String).returns(T::Array[String])}
+  def find_sheets_by_name(folder_id, sheet_name)
+    response = with_retries { drive_service.list_files(
+      q: "'#{folder_id}' in parents and name = '#{sheet_name}' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+      fields: 'files(id, name)'
+    ) }
+    response.files.map(&:id)
+  end
+
+  sig {params(folder_id: String, word: String).returns(T::Array[Google::Apis::DriveV3::File])}
+  def find_sheets_containing_word_in_name(folder_id, word)
+    response = with_retries { drive_service.list_files(
+      q: "'#{folder_id}' in parents and name contains '#{word}' and mimeType = 'application/vnd.google-apps.spreadsheet'",
+      fields: 'files(id, name)'
+    ) }
+    response.files
   end
 end
 
@@ -162,8 +321,8 @@ end
 
 LOGGER = Logger.new($stdout)
 $stdout.sync = true
-sheet = GoogleSheet.new(spreadsheet_id: '1qXl4o0aKL3kAbDpoNJD8XeAFjMXIWjCXTWK-PWDL-DM',
-                        table_range: 'Sheet1!A1', logger: LOGGER)
+sheet = GoogleSheet.new(folder_id: '1mZO5hWUZFNTgnkb7tvDrvG3x2mVOxCeU',
+                        logger: LOGGER)
 
 store = CivilServiceJobsScraper::DynamoDbResultStore.new
 store.each.with_index do |job, i|
