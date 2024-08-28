@@ -14,12 +14,14 @@ require 'tzinfo'
 require "reverse_markdown"
 
 class GoogleSheet
-  attr_reader :authorizer, :spreadsheet_id, :logger
+  attr_reader :authorizer, :spreadsheet_id, :logger, :table_range, :rows
 
-  def initialize(spreadsheet_id:, logger: Logger.new(nil))
+  def initialize(spreadsheet_id:, table_range:, logger: Logger.new(nil))
     authorize!
     @spreadsheet_id = spreadsheet_id
+    @table_range = table_range
     @logger = logger
+    @rows = []
   end
 
   def authorize!
@@ -48,21 +50,55 @@ class GoogleSheet
     end
   end
 
-  def append_to_table(table_range, values)
+  def flush!
     value_range_object = Google::Apis::SheetsV4::ValueRange.new(
       range: table_range,
       major_dimension: 'ROWS',
-      values: values
+      values: rows
     )
 
-    response = sheets_service.append_spreadsheet_value(
-      spreadsheet_id,
-      table_range,
-      value_range_object,
-      value_input_option: 'RAW'
-    )
-  rescue Google::Apis::Error => e
-    logger.error(e)
+    sent = T.let(false, T::Boolean)
+    tries = 0
+    response = T.let(nil, T.nilable(Google::Apis::SheetsV4::AppendValuesResponse))
+
+    logger.info "Appending #{rows.size} rows to sheet"
+    while !sent
+      begin
+        tries += 1
+
+        response = sheets_service.append_spreadsheet_value(
+          spreadsheet_id,
+          table_range,
+          value_range_object,
+          value_input_option: 'RAW'
+        )
+        sent = true
+        logger.info "Successfully appended #{rows.size} rows to sheet"
+        @rows = []
+        response
+      rescue Google::Apis::RateLimitError => e
+        if tries < 20
+          sleep_time = tries^2 / 2
+          logger.info "Request was rate limited, sleeping for #{sleep_time} before attempt number #{tries}"
+          sleep(sleep_time)
+        else
+          raise
+        end
+      end
+    end
+  end
+
+  def approx_batch_size_in_bytes
+    rows.map do |row|
+      row.map {|v| v.to_s.size}.sum
+    end.sum
+  end
+
+  def append_row(row)
+    rows << row
+    if (approx_batch_size_in_bytes > 1_500_000)
+      flush!
+    end
   end
 
   def refcodes_of_jobs_already_in_sheet
@@ -126,15 +162,17 @@ end
 
 LOGGER = Logger.new($stdout)
 $stdout.sync = true
-sheet = GoogleSheet.new(spreadsheet_id: '1qXl4o0aKL3kAbDpoNJD8XeAFjMXIWjCXTWK-PWDL-DM', logger: LOGGER)
+sheet = GoogleSheet.new(spreadsheet_id: '1qXl4o0aKL3kAbDpoNJD8XeAFjMXIWjCXTWK-PWDL-DM',
+                        table_range: 'Sheet1!A1', logger: LOGGER)
 
 store = CivilServiceJobsScraper::DynamoDbResultStore.new
-store.each.take(40).each.with_index do |job, i|
+store.each.with_index do |job, i|
   if sheet.refcodes_of_jobs_already_in_sheet.include?(job.refcode)
     LOGGER.info "#{i}: #{job.refcode} #{job.title} -- already in sheet"
   else
     LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
     row = spreadsheet_row_for_job(job, job.body_record)
-    sheet.append_to_table('Sheet1!A1', [row])
+    sheet.append_row(row)
   end
 end
+sheet.flush!
