@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+
+require 'googleauth'
+require 'google/apis/sheets_v4'
+require 'google/apis/drive_v3'
+
+class GoogleSheetMaker
+  attr_reader :authorizer, :folder_id, :logger
+
+  def initialize(folder_id:, logger: Logger.new(nil))
+    authorize!
+    @folder_id = folder_id
+    @logger = logger
+    @rows = []
+  end
+
+  def authorize!
+    raise_if_invalid_creds!
+
+    opts = {
+      scope: [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+      ]
+    }
+
+    if ENV.has_key?("GOOGLE_CLOUD_CREDS")
+      opts.merge!(json_key_io: StringIO.new(ENV.fetch("GOOGLE_CLOUD_CREDS")))
+    end
+
+    @authorizer = Google::Auth::ServiceAccountCredentials.make_creds(opts)
+  end
+
+  def raise_if_invalid_creds!
+    unless valid_creds?
+      raise "Must pass credentials in ENV, either:
+        - GOOGLE_CLOUD_CREDS containing the full JSON credentials structure downloaded from google cloud
+        - or GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY containing these credentials"
+    end
+  end
+
+  def valid_creds?
+    ENV.has_key?("GOOGLE_CLOUD_CREDS") or
+      %W{GOOGLE_CLIENT_ID GOOGLE_CLIENT_EMAIL GOOGLE_PRIVATE_KEY}.all? {|env_var| ENV.has_key?(env_var) }
+  end
+
+  def sheets_service
+    @sheets_service ||= begin
+      service = Google::Apis::SheetsV4::SheetsService.new
+      service.authorization = authorizer
+      service
+    end
+  end
+
+  def drive_service
+    @drive_service ||= begin
+      service = Google::Apis::DriveV3::DriveService.new
+      service.authorization = authorizer
+      service
+    end
+  end
+
+  def create_spreadsheet(name)
+    created_spreadsheet = sheets_service.create_spreadsheet(
+      Google::Apis::SheetsV4::Spreadsheet.new(
+        properties: {
+          title: name
+        }
+      )
+    )
+
+    drive_service.update_file(
+      created_spreadsheet.spreadsheet_id,
+      add_parents: folder_id,
+      fields: 'id, parents'
+    )
+  end
+end
+
+maker = GoogleSheetMaker.new(folder_id: "1mZO5hWUZFNTgnkb7tvDrvG3x2mVOxCeU")
+maker.create_spreadsheet "Test 3"

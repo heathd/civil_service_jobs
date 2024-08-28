@@ -19,5 +19,6 @@ require "tty-progressbar"
 require "zeitwerk"
 require 'googleauth'
 require 'google/apis/sheets_v4'
+require 'google/apis/drive_v3'
 require 'tzinfo'
 require 'reverse_markdown'
