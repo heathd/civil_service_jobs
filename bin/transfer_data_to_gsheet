@@ -77,25 +77,51 @@ class GoogleSheet
     end
   end
 
+  def header_row
+    [
+			"Scrape Date",
+			"Scrape TZ",
+			"Refcode",
+			"Job title",
+			"Department",
+			"Location",
+			"Salary",
+			"Closing date",
+			"Grade",
+			"Stage",
+			"Reference Number",
+			"Job Grade",
+			"Number Of Jobs Available",
+			"Job Grade 0",
+			"Job Grade 1",
+			"Contract Type",
+			"Business Area",
+			"Type Of Role",
+			"Working Pattern",
+			"Length Of Employment",
+			"Body"
+		]
+  end
+
   def flush!
     n = next_batch_sheet
 
     logger.info "Appending #{rows.size} rows to refcode sheet"
-    flush_data_to_sheet(refcode_spreadsheet_id, 'Sheet1!A1', rows.map {|row| row[0..2] + [n.name]})
+    flush_data_to_sheet(refcode_spreadsheet_id, 'Sheet1!A1', rows.map {|row| row[0..7] + [n.name]})
     logger.info "Successfully appended #{rows.size} rows"
 
     logger.info "Appending #{rows.size} rows to '#{n.name}' (id='#{n.id}')"
-    flush_data_to_sheet(n.id, 'Sheet1!A1', rows)
+    flush_data_to_sheet(n.id, 'Sheet1!A1', rows, add_header_row: n.rows == 0)
     logger.info "Successfully appended #{rows.size} rows to '#{n.name}' (id='#{n.id}')"
     n.rows += rows.size
     @rows = []
   end
 
-  def flush_data_to_sheet(spreadsheet_id, table_range, rows)
+  def flush_data_to_sheet(spreadsheet_id, table_range, rows, add_header_row: false)
     value_range_object = Google::Apis::SheetsV4::ValueRange.new(
       range: table_range,
       major_dimension: 'ROWS',
-      values: rows
+      values: add_header_row ? [header_row] + rows : rows
     )
 
     response = T.let(nil, T.nilable(Google::Apis::SheetsV4::AppendValuesResponse))
@@ -287,6 +313,22 @@ def html_to_markdown(html)
   ReverseMarkdown.convert(html || "")
 end
 
+def closedate(job_closing_statement)
+  tz = TZInfo::Timezone.get("Europe/London")
+
+  if job_closing_statement =~ /Closes : (.*?) on (.*?)$/
+    time = Time.parse($1) rescue Time.new(23,55,00)
+    date = Date.parse($2)
+
+    generate_google_datetime(tz.local_datetime(date.year,date.month,date.day,time.hour,time.min,time.sec))
+  else
+    job_closing_statement
+  end
+
+rescue
+	job_closing_statement
+end
+
 sig {params(
   job: CivilServiceJobsScraper::DynamoDbResultStore::JobMainRecord,
   body: T.nilable(CivilServiceJobsScraper::DynamoDbResultStore::JobBodyRecord)
@@ -302,7 +344,7 @@ def spreadsheet_row_for_job(job, body)
     job.department,
     job.location,
     job.salary,
-    job.closingdate,
+    closedate(job.closingdate),
     job.grade,
     job.stage,
     job.reference_number,
@@ -326,12 +368,12 @@ sheet = GoogleSheet.new(folder_id: '1mZO5hWUZFNTgnkb7tvDrvG3x2mVOxCeU',
 
 store = CivilServiceJobsScraper::DynamoDbResultStore.new
 store.each.with_index do |job, i|
-  if sheet.refcodes_of_jobs_already_in_sheet.include?(job.refcode)
-    LOGGER.info "#{i}: #{job.refcode} #{job.title} -- already in sheet"
-  else
-    LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
-    row = spreadsheet_row_for_job(job, job.body_record)
-    sheet.append_row(row)
-  end
+	if sheet.refcodes_of_jobs_already_in_sheet.include?(job.refcode)
+		LOGGER.info "#{i}: #{job.refcode} #{job.title} -- already in sheet"
+	else
+		LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
+		row = spreadsheet_row_for_job(job, job.body_record)
+		sheet.append_row(row)
+	end
 end
 sheet.flush!
