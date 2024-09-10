@@ -26,10 +26,10 @@ under the Open Government Licence v3.0.
 
 The data downloaded by this scraper is collected under [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
 
-You can access a copy of the data as a tar+gzipped sqlite database at the following URL:
+You can access a copy of the data as a collection of google sheets at:
 
 ```
-https://civil-service-jobs-data.s3.eu-west-1.amazonaws.com/csj.tar.gz
+https://drive.google.com/drive/u/0/folders/1mZO5hWUZFNTgnkb7tvDrvG3x2mVOxCeU
 ```
 
 ## License
