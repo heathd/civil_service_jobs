@@ -361,19 +361,30 @@ def spreadsheet_row_for_job(job, body)
   ]
 end
 
-LOGGER = Logger.new($stdout)
+LOGGER = Logger.new($stdout, progname: "transfer_data_to_gsheet")
 $stdout.sync = true
 sheet = GoogleSheet.new(folder_id: '1mZO5hWUZFNTgnkb7tvDrvG3x2mVOxCeU',
                         logger: LOGGER)
 
 store = CivilServiceJobsScraper::DynamoDbResultStore.new
-store.each.with_index do |job, i|
-	if sheet.refcodes_of_jobs_already_in_sheet.include?(job.refcode)
-		LOGGER.info "#{i}: #{job.refcode} #{job.title} -- already in sheet"
-	else
-		LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
-		row = spreadsheet_row_for_job(job, job.body_record)
-		sheet.append_row(row)
-	end
+
+LOGGER.info "Loading jobs from dynamodb..."
+jobs = store.each.to_a
+LOGGER.info "Loaded #{jobs.size} jobs."
+
+LOGGER.info "Loading seen refcodes from google sheet..."
+refcodes_seen = sheet.refcodes_of_jobs_already_in_sheet
+LOGGER.info "#{refcodes_seen.size} refcodes seen already."
+
+seen_jobs, new_jobs = jobs.partition {|job| refcodes_seen.include?(job.refcode) }
+
+LOGGER.info "#{new_jobs.size} new jobs. Skipping #{seen_jobs.size} jobs already in google sheets."
+
+new_jobs.each do |job|
+  LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
+  row = spreadsheet_row_for_job(job, job.body_record)
+  sheet.append_row(row)
 end
 sheet.flush!
+
+LOGGER.info "Successfully added #{new_jobs.size} new jobs to google sheets. Skipped #{seen_jobs.size} jobs already in google sheets."

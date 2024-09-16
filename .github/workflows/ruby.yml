@@ -51,3 +51,8 @@ jobs:
 
     - name: Run scraper
       run: bundle exec ruby ./scraper.rb --line-logger ${{ inputs.limitPages > 0 && format('--limit-pages {0}', inputs.limitPages) }}  -d csj.sqlite
+
+    - name: Run transfer script
+      run: bundle exec ruby ./bin/transfer_data_to_gsheet
+      env:
+        GOOGLE_CLOUD_CREDS: ${{ secrets.GOOGLE_CLOUD_CREDS }}
