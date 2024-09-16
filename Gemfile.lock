@@ -46,7 +46,7 @@ GEM
       mutex_m
       representable (~> 3.0)
       retriable (>= 2.0, < 4.a)
-    google-apis-drive_v3 (0.55.0)
+    google-apis-drive_v3 (0.56.0)
       google-apis-core (>= 0.15.0, < 2.a)
     google-apis-sheets_v4 (0.35.0)
       google-apis-core (>= 0.15.0, < 2.a)
@@ -63,7 +63,7 @@ GEM
       domain_name (~> 0.5)
     httpclient (2.8.3)
     jmespath (1.6.2)
-    jwt (2.8.2)
+    jwt (2.9.0)
       base64
     language_server-protocol (3.17.0.3)
     logger (1.6.1)
