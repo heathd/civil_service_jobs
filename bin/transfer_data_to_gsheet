@@ -381,7 +381,7 @@ seen_jobs, new_jobs = jobs.partition {|job| refcodes_seen.include?(job.refcode) 
 LOGGER.info "#{new_jobs.size} new jobs. Skipping #{seen_jobs.size} jobs already in google sheets."
 
 new_jobs.each do |job|
-  LOGGER.info "#{i}: #{job.refcode} #{job.title} (#{job.created_at}) - loading"
+  LOGGER.info "#{job.refcode} #{job.title} (#{job.created_at}) - loading"
   row = spreadsheet_row_for_job(job, job.body_record)
   sheet.append_row(row)
 end
