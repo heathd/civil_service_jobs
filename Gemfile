@@ -21,6 +21,7 @@ gem "google-apis-sheets_v4"
 gem "tzinfo"
 gem "tzinfo-data"
 gem "reverse_markdown"
+gem "bigdecimal"
 
 group :development do
   gem "foreman"
