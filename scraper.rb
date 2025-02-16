@@ -6,7 +6,7 @@ require 'optparse'
 options = {
 	db_file: 'data.sqlite',
 	logger: :tty,
-  num_threads: 4
+  num_threads: 1
 }
 
 OptionParser.new do |opts|
