@@ -65,19 +65,25 @@ class CivilServiceJobsScraper::ResultNavigator
       status_display.increment(:enqueue, result_page.current_page)
       enqueued += 1
 
-      worker_pool.enqueue { |thread_num|
+      worker_pool.enqueue do |thread_num|
         status_display.thread_status(thread_num, "Fetch #{job_teaser.refcode}")
         status_display.increment(:fetch, result_page.current_page)
         fetched += 1
 
-        job_page = CivilServiceJobsScraper::Page::JobDetail.new(agent.get(job_teaser.job_page_url))
+        mechanize_page = agent.get(job_teaser.job_page_url)
+        job_page = CivilServiceJobsScraper::Page::JobDetail.new(mechanize_page)
         job = CivilServiceJobsScraper::Model::Job.from_scrape(job_teaser, job_page)
         results_store.add(job)
 
         status_display.thread_status(thread_num, "DONE  #{job_teaser.refcode}")
         status_display.increment(:complete, result_page.current_page)
         complete += 1
-      }
+      rescue Net::HTTPTooManyRequests => e
+        # Displays an error message. This means the URL fetch is abandoned.
+        # TODO - retry with some kind of throttling/backoff.
+        status_display.thread_status(thread_num, "Error #{e.code} #{e.message}")
+        status_display.increment(:e_too_many_request, result_page.current_page)
+      end
     end
 
     status_display.result_page(result_page.current_page, "expanded")
