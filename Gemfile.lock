@@ -185,7 +185,7 @@ GEM
     sqlite_magic (0.0.6)
       sqlite3
     strings-ansi (0.2.0)
-    tapioca (0.16.9)
+    tapioca (0.16.10)
       benchmark
       bundler (>= 2.2.25)
       netrc (>= 0.11.0)
