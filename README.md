@@ -32,6 +32,13 @@ You can access a copy of the data as a collection of google sheets at:
 https://drive.google.com/drive/u/0/folders/1mZO5hWUZFNTgnkb7tvDrvG3x2mVOxCeU
 ```
 
+## No longer running as of 19/2/2025
+
+Civil Service Jobs implemented a CAPTCHA which prevents the scraper from working. Therefore no data has been collected after 19 Feb 2025 and the scraping process no longer runs.
+
+If anyone from Civil Service Jobs is reading this please get in touch I'd love to discuss how we could make available a permanent archive public job ads
+(which are published under open government liceneses). You can contact me by email on david at davidheath dot org. 
+
 ## License
 
 This source code is licensed under the GNU Affero Public License v3.0
