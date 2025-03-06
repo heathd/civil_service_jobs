@@ -19,9 +19,14 @@ on:
         required: false
         type: number
 
-  schedule:
-    # Run daily at 02:03
-    - cron: "03 02 * * *"
+# As of 19/2/2025 the scraper is no longer working. Civil Service Jobs have implemented a captcha on every request which means 
+# this scraping process no longer works. If anyone from Civil Service Jobs is reading this please get in touch I'd love to discuss
+# how we could make available a permanent archive public job ads (which are published under open government liceneses). You can contact me
+# by email on david at davidheath dot org. 
+
+#  schedule:
+#    # Run daily at 02:03
+#    - cron: "03 02 * * *"
 
 permissions:
   id-token: write
